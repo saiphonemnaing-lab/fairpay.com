@@ -316,7 +316,7 @@ const sampleStories = [
     id: "story-2",
     title: "Road to my first healthcare analytics internship",
     author: "Anonymous analyst intern",
-    category: "Road to internship",
+    category: "Internship",
     role: "Healthcare data intern",
     company: "Regional hospital network",
     pay: "$31/hr",
@@ -378,6 +378,13 @@ const elements = {
   storyFilters: document.querySelectorAll("[data-story-filter]"),
   storySearch: document.querySelector("#storySearch"),
   storiesList: document.querySelector("#storiesList"),
+  storyIndustry: document.querySelector("#storyIndustry"),
+  storyCompany: document.querySelector("#storyCompany"),
+  storyNewCompany: document.querySelector("#storyNewCompany"),
+  storyNewCompanyField: document.querySelector("#storyNewCompanyField"),
+  storyRole: document.querySelector("#storyRole"),
+  storyNewRole: document.querySelector("#storyNewRole"),
+  storyNewRoleField: document.querySelector("#storyNewRoleField"),
   form: document.querySelector("#payForm"),
   role: document.querySelector("#role"),
   newRole: document.querySelector("#newRole"),
@@ -658,11 +665,15 @@ function filteredReports() {
 
 function populateSelects() {
   elements.industry.innerHTML = industries.map((industry) => `<option value="${industry}">${industry}</option>`).join("");
+  if (elements.storyIndustry) {
+    elements.storyIndustry.innerHTML = industries.map((industry) => `<option value="${industry}">${industry}</option>`).join("");
+  }
   elements.industryFilter.innerHTML = [
     '<option value="All">All companies</option>',
     ...state.companies.map((company) => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`)
   ].join("");
   populateEntitySelects();
+  populateStoryEntitySelects();
 }
 
 function populateEntitySelects() {
@@ -759,6 +770,49 @@ function updateEntityFields() {
   if (!addingLocation) elements.newLocation.value = "";
 }
 
+function populateStoryEntitySelects() {
+  if (!elements.storyCompany || !elements.storyRole) return;
+
+  const selectedCompany = elements.storyCompany.value;
+  const selectedRole = elements.storyRole.value;
+  const companyOptions = companiesForIndustry(elements.storyIndustry.value);
+  const roleOptions = rolesForCompany(selectedCompany);
+
+  elements.storyCompany.innerHTML = [
+    '<option value="">Select company</option>',
+    ...companyOptions.map((company) => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`),
+    `<option value="${ADD_NEW_COMPANY}">Add new company...</option>`
+  ].join("");
+
+  elements.storyRole.innerHTML = [
+    '<option value="">Select role</option>',
+    ...roleOptions.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(role)}</option>`),
+    `<option value="${ADD_NEW_ROLE}">Add new role...</option>`
+  ].join("");
+
+  if (companyOptions.includes(selectedCompany) || selectedCompany === ADD_NEW_COMPANY) {
+    elements.storyCompany.value = selectedCompany;
+  }
+  if (roleOptions.includes(selectedRole) || selectedRole === ADD_NEW_ROLE) {
+    elements.storyRole.value = selectedRole;
+  }
+
+  updateStoryEntityFields();
+}
+
+function updateStoryEntityFields() {
+  const addingCompany = elements.storyCompany.value === ADD_NEW_COMPANY;
+  const addingRole = elements.storyRole.value === ADD_NEW_ROLE;
+
+  elements.storyNewCompanyField.hidden = !addingCompany;
+  elements.storyNewRoleField.hidden = !addingRole;
+  elements.storyNewCompany.required = addingCompany;
+  elements.storyNewRole.required = addingRole;
+
+  if (!addingCompany) elements.storyNewCompany.value = "";
+  if (!addingRole) elements.storyNewRole.value = "";
+}
+
 function updatePayTypeCopy() {
   const isHourly = elements.payType.value === "hourly";
   elements.payAmountLabel.textContent = isHourly ? "Hourly base" : "Base pay";
@@ -809,13 +863,17 @@ function createReport(formData) {
 }
 
 function createStory(formData) {
+  const selectedCompany = formData.get("storyCompany");
+  const selectedRole = formData.get("storyRole");
+
   return {
     id: `user-story-${makeId()}`,
     title: cleanText(formData.get("storyTitle"), 82),
     author: "Anonymous contributor",
     category: formData.get("storyCategory"),
-    role: cleanText(formData.get("storyRole")),
-    company: cleanText(formData.get("storyCompany")),
+    industry: formData.get("storyIndustry"),
+    role: cleanText(selectedRole === ADD_NEW_ROLE ? formData.get("storyNewRole") : selectedRole),
+    company: cleanText(selectedCompany === ADD_NEW_COMPANY ? formData.get("storyNewCompany") : selectedCompany, 80),
     pay: cleanText(formData.get("storyPay")),
     experience: cleanText(formData.get("storyExperience")),
     body: cleanText(formData.get("storyBody"), 900),
@@ -1140,6 +1198,7 @@ function completeOnboarding(profile) {
 }
 
 function openStoryModal() {
+  populateStoryEntitySelects();
   elements.storyModal.classList.add("is-open");
   elements.storyModal.setAttribute("aria-hidden", "false");
   document.body.classList.add("has-drawer");
@@ -1564,7 +1623,12 @@ function bindEvents() {
 
     state.userStories.unshift(story);
     saveUserStories();
+    if (story.company && !state.companies.includes(story.company)) state.companies.push(story.company);
+    if (story.role && !state.roles.includes(story.role)) state.roles.push(story.role);
+    state.companies = uniqueSorted(state.companies);
+    state.roles = uniqueSorted(state.roles);
     elements.storyForm.reset();
+    populateStoryEntitySelects();
     closeStoryModal();
     state.storyFilter = "All";
     elements.storyFilters.forEach((filter) => {
@@ -1594,6 +1658,19 @@ function bindEvents() {
     state.storySearch = event.target.value.trim();
     renderStories();
   });
+
+  elements.storyIndustry.addEventListener("change", () => {
+    elements.storyCompany.value = "";
+    elements.storyRole.value = "";
+    populateStoryEntitySelects();
+  });
+
+  elements.storyCompany.addEventListener("change", () => {
+    populateStoryEntitySelects();
+    updateStoryEntityFields();
+  });
+
+  elements.storyRole.addEventListener("change", updateStoryEntityFields);
 
   elements.storiesList.addEventListener("click", (event) => {
     const voteButton = event.target.closest("[data-story-action]");

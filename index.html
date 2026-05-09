@@ -41,7 +41,7 @@
             <select id="profileInterest" name="profileInterest" required>
               <option value="Negotiation">Negotiation</option>
               <option value="Interview">Interview</option>
-              <option value="Road to internship">Road to internship</option>
+              <option value="Internship">Internship</option>
               <option value="Promotion">Promotion</option>
               <option value="Career switch">Career switch</option>
             </select>
@@ -89,7 +89,7 @@
               <button class="story-filter is-active" type="button" data-story-filter="All">All</button>
               <button class="story-filter" type="button" data-story-filter="Negotiation">Negotiation</button>
               <button class="story-filter" type="button" data-story-filter="Interview">Interviews</button>
-              <button class="story-filter" type="button" data-story-filter="Road to internship">Internships</button>
+              <button class="story-filter" type="button" data-story-filter="Internship">Internships</button>
             </div>
           </div>
 
@@ -356,18 +356,30 @@
             <select id="storyCategory" name="storyCategory" required>
               <option value="Negotiation">Negotiation</option>
               <option value="Interview">Interview</option>
-              <option value="Road to internship">Road to internship</option>
+              <option value="Internship">Internship</option>
               <option value="Promotion">Promotion</option>
               <option value="Career switch">Career switch</option>
             </select>
           </div>
           <div class="field">
-            <label for="storyRole">Role</label>
-            <input id="storyRole" name="storyRole" type="text" placeholder="Software engineering intern" required />
+            <label for="storyIndustry">Industry</label>
+            <select id="storyIndustry" name="storyIndustry" required></select>
           </div>
           <div class="field">
-            <label for="storyCompany">School or company</label>
-            <input id="storyCompany" name="storyCompany" type="text" placeholder="Large tech company" required />
+            <label for="storyCompany">Company</label>
+            <select id="storyCompany" name="storyCompany" required></select>
+          </div>
+          <div class="field conditional-field" id="storyNewCompanyField" hidden>
+            <label for="storyNewCompany">New company</label>
+            <input id="storyNewCompany" name="storyNewCompany" type="text" placeholder="Company name" maxlength="80" />
+          </div>
+          <div class="field">
+            <label for="storyRole">Role</label>
+            <select id="storyRole" name="storyRole" required></select>
+          </div>
+          <div class="field conditional-field" id="storyNewRoleField" hidden>
+            <label for="storyNewRole">New role</label>
+            <input id="storyNewRole" name="storyNewRole" type="text" placeholder="Software engineering intern" maxlength="80" />
           </div>
           <div class="field">
             <label for="storyPay">Pay</label>

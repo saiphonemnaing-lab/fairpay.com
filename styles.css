@@ -1033,8 +1033,7 @@ textarea:focus {
   overflow: hidden;
 }
 
-.report-drawer,
-.story-modal {
+.report-drawer {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -1046,7 +1045,14 @@ textarea:focus {
 }
 
 .story-modal {
+  position: fixed;
+  inset: 0;
   z-index: 60;
+  display: grid;
+  grid-template-rows: 1fr minmax(420px, 80vh);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
 }
 
 .report-drawer.is-open,
@@ -1060,8 +1066,7 @@ textarea:focus {
   background: rgba(22, 32, 36, 0.38);
 }
 
-.drawer-panel,
-.story-modal-panel {
+.drawer-panel {
   position: relative;
   overflow: auto;
   background: #fff;
@@ -1075,6 +1080,25 @@ textarea:focus {
 .report-drawer.is-open .drawer-panel,
 .story-modal.is-open .story-modal-panel {
   transform: translateX(0);
+}
+
+.story-modal-panel {
+  position: relative;
+  overflow: auto;
+  width: min(980px, calc(100% - 24px));
+  justify-self: center;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: #fff;
+  box-shadow: 0 -24px 60px rgba(22, 32, 36, 0.18);
+  padding: 22px;
+  transform: translateY(100%);
+  transition: transform 220ms ease;
+}
+
+.story-modal.is-open .story-modal-panel {
+  transform: translateY(0);
 }
 
 .drawer-close {
