@@ -30,6 +30,8 @@ const sampleReports = [
     workStyle: "Hybrid",
     companySize: "1k-10k",
     note: "Base plus annual bonus. Offer improved after sharing a competing range from a peer group.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-05-07T10:12:00.000Z",
     helpful: 42,
     similar: 18,
@@ -48,6 +50,8 @@ const sampleReports = [
     workStyle: "On-site",
     companySize: "10k+",
     note: "Night differential and weekend rotation account for about 12 percent of total pay.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-05-06T15:41:00.000Z",
     helpful: 31,
     similar: 22,
@@ -66,6 +70,8 @@ const sampleReports = [
     workStyle: "Field",
     companySize: "51-250",
     note: "Union site with overtime available most months. Benefits are separate from this pay figure.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-05-05T08:20:00.000Z",
     helpful: 24,
     similar: 15,
@@ -84,6 +90,8 @@ const sampleReports = [
     workStyle: "Hybrid",
     companySize: "10k+",
     note: "Includes 8 percent target bonus. SQL, dashboarding, and forecasting are the main skill mix.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-05-03T19:12:00.000Z",
     helpful: 37,
     similar: 12,
@@ -102,6 +110,8 @@ const sampleReports = [
     workStyle: "On-site",
     companySize: "1k-10k",
     note: "Tenth year on the scale with a masters stipend. Summer program pay excluded.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-05-01T17:05:00.000Z",
     helpful: 29,
     similar: 19,
@@ -120,6 +130,8 @@ const sampleReports = [
     workStyle: "On-site",
     companySize: "51-250",
     note: "Five-day schedule. Bonus depends on food cost targets and private event volume.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-30T13:52:00.000Z",
     helpful: 16,
     similar: 8,
@@ -138,6 +150,8 @@ const sampleReports = [
     workStyle: "On-site",
     companySize: "1k-10k",
     note: "Second shift premium included. Training new operators adds occasional overtime.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-28T11:10:00.000Z",
     helpful: 22,
     similar: 11,
@@ -156,6 +170,8 @@ const sampleReports = [
     workStyle: "On-site",
     companySize: "251-1k",
     note: "Supervises inbound team. Peak season bonus has ranged from 2 to 5 percent.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-26T09:45:00.000Z",
     helpful: 18,
     similar: 10,
@@ -174,6 +190,8 @@ const sampleReports = [
     workStyle: "Remote",
     companySize: "251-1k",
     note: "OTE includes base plus retention bonus. No commission on expansions.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-24T14:18:00.000Z",
     helpful: 34,
     similar: 13,
@@ -192,6 +210,8 @@ const sampleReports = [
     workStyle: "Hybrid",
     companySize: "1k-10k",
     note: "Step increase expected next fiscal year. Pension contribution is not included.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-20T16:07:00.000Z",
     helpful: 21,
     similar: 9,
@@ -210,6 +230,8 @@ const sampleReports = [
     workStyle: "On-site",
     companySize: "10k+",
     note: "Includes quarterly bonus at target. Holiday coverage changes total hours a lot.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-19T12:22:00.000Z",
     helpful: 14,
     similar: 7,
@@ -228,6 +250,8 @@ const sampleReports = [
     workStyle: "Field",
     companySize: "251-1k",
     note: "Travel weeks and safety certification premium are included in the hourly average.",
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: "2026-04-17T07:56:00.000Z",
     helpful: 19,
     similar: 6,
@@ -254,10 +278,15 @@ const elements = {
   payType: document.querySelector("#payType"),
   payAmount: document.querySelector("#payAmount"),
   payAmountLabel: document.querySelector("#payAmountLabel"),
+  bonusAmount: document.querySelector("#bonusAmount"),
   experience: document.querySelector("#experience"),
   gender: document.querySelector("#gender"),
   workStyle: document.querySelector("#workStyle"),
   companySize: document.querySelector("#companySize"),
+  linkedinUrl: document.querySelector("#linkedinUrl"),
+  linkedinVerify: document.querySelector("#linkedinVerify"),
+  linkedinVerified: document.querySelector("#linkedinVerified"),
+  linkedinStatus: document.querySelector("#linkedinStatus"),
   note: document.querySelector("#note"),
   searchInput: document.querySelector("#searchInput"),
   industryFilter: document.querySelector("#industryFilter"),
@@ -424,7 +453,7 @@ function populateSelects() {
 
 function updatePayTypeCopy() {
   const isHourly = elements.payType.value === "hourly";
-  elements.payAmountLabel.textContent = isHourly ? "Hourly rate" : "Annual total pay";
+  elements.payAmountLabel.textContent = isHourly ? "Hourly base" : "Base pay";
   elements.payAmount.placeholder = isHourly ? "42" : "120000";
   elements.payAmount.step = isHourly ? "0.25" : "1000";
 }
@@ -441,20 +470,25 @@ function normalizePay(payType, value) {
 function createReport(formData) {
   const payType = formData.get("payType");
   const rawPay = Number(formData.get("payAmount"));
+  const bonusAmount = Number(formData.get("bonusAmount") || 0);
 
   return {
     id: `user-${makeId()}`,
     role: cleanText(formData.get("role")),
     industry: formData.get("industry"),
     location: cleanText(formData.get("location")),
-    annualPay: normalizePay(payType, rawPay),
+    annualPay: normalizePay(payType, rawPay) + bonusAmount,
     rawPay,
+    bonusAmount,
     payType,
     experience: formData.get("experience"),
     gender: formData.get("gender"),
     workStyle: formData.get("workStyle"),
     companySize: formData.get("companySize"),
     note: cleanText(formData.get("note")) || "No extra context added.",
+    linkedinUrl: cleanText(formData.get("linkedinUrl")),
+    verificationMethod: "LinkedIn",
+    verified: true,
     createdAt: new Date().toISOString(),
     helpful: 0,
     similar: 0,
@@ -601,11 +635,17 @@ function renderFeed(reports) {
 
   elements.feedList.innerHTML = reports
     .map((report) => {
+      const bonusAmount = Number(report.bonusAmount || 0);
       const hourlyLabel =
-        report.payType === "hourly" ? `${formatHourly(report.rawPay)}/hr annualized` : "annual total";
+        report.payType === "hourly"
+          ? `${formatHourly(report.rawPay)}/hr base + ${formatMoney(bonusAmount)} bonus`
+          : `${formatMoney(report.rawPay)} base + ${formatMoney(bonusAmount)} bonus`;
       const activeHelpful = reactionFor(report.id, "helpful") ? "is-active" : "";
       const activeSimilar = reactionFor(report.id, "similar") ? "is-active" : "";
       const isUser = report.source === "user" ? "is-user" : "";
+      const verifiedBadge = report.verified
+        ? `<span class="pill verified">LinkedIn verified</span>`
+        : "";
 
       return `
         <article class="entry-card ${isUser}" data-report-id="${report.id}">
@@ -619,6 +659,7 @@ function renderFeed(reports) {
                 <span class="pill">${escapeHtml(report.gender || "Undisclosed")}</span>
                 <span class="pill">${escapeHtml(report.workStyle)}</span>
                 <span class="pill">${escapeHtml(report.companySize)}</span>
+                ${verifiedBadge}
               </div>
             </div>
             <div class="salary">
@@ -628,7 +669,7 @@ function renderFeed(reports) {
           </div>
           <p class="entry-note">${escapeHtml(report.note)}</p>
           <div class="entry-footer">
-            <span class="entry-meta">Anonymous · ${formatDate(report.createdAt)}</span>
+            <span class="entry-meta">Anonymous · ${report.verified ? "verified" : "unverified"} · ${formatDate(report.createdAt)}</span>
             <div class="entry-actions">
               <button class="entry-action insight-trigger" type="button" data-open-report="${report.id}">
                 View insight
@@ -1030,6 +1071,12 @@ function toggleReaction(reportId, type) {
 function bindEvents() {
   elements.form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (elements.linkedinVerified.value !== "true") {
+      showToast("Verify with LinkedIn before posting.");
+      elements.linkedinUrl.focus();
+      return;
+    }
+
     const formData = new FormData(elements.form);
     const report = createReport(formData);
 
@@ -1040,12 +1087,31 @@ function bindEvents() {
     elements.gender.value = "Male";
     elements.workStyle.value = "On-site";
     elements.companySize.value = "1-50";
+    elements.bonusAmount.value = "0";
+    resetLinkedInVerification();
     updatePayTypeCopy();
     render();
-    showToast("Anonymous pay report posted on this device.");
+    showToast("LinkedIn-verified anonymous report posted on this device.");
   });
 
   elements.payType.addEventListener("change", updatePayTypeCopy);
+
+  elements.linkedinVerify.addEventListener("click", () => {
+    if (!isLinkedInUrl(elements.linkedinUrl.value)) {
+      elements.linkedinVerified.value = "false";
+      elements.linkedinStatus.textContent = "Enter a valid LinkedIn profile link to verify.";
+      elements.linkedinStatus.classList.remove("is-verified");
+      elements.linkedinUrl.focus();
+      return;
+    }
+
+    elements.linkedinVerified.value = "true";
+    elements.linkedinStatus.textContent = "LinkedIn verification connected for this prototype.";
+    elements.linkedinStatus.classList.add("is-verified");
+    showToast("LinkedIn profile verified for this contribution.");
+  });
+
+  elements.linkedinUrl.addEventListener("input", resetLinkedInVerification);
 
   elements.searchInput.addEventListener("input", (event) => {
     state.search = event.target.value.trim();
@@ -1124,6 +1190,21 @@ function bindEvents() {
     elements.industryFilter.value = state.industry;
     render();
   });
+}
+
+function isLinkedInUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.toLowerCase().endsWith("linkedin.com");
+  } catch {
+    return false;
+  }
+}
+
+function resetLinkedInVerification() {
+  elements.linkedinVerified.value = "false";
+  elements.linkedinStatus.textContent = "LinkedIn verification required before posting.";
+  elements.linkedinStatus.classList.remove("is-verified");
 }
 
 populateSelects();

@@ -219,10 +219,15 @@ h3 {
 }
 
 .pay-form {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(6, 1fr);
 }
 
-.field:not(.two-col),
+.comp-field {
+  grid-column: span 2;
+}
+
+.field:not(.two-col):not(.comp-field),
+.linkedin-panel,
 .privacy-strip,
 .primary-action {
   grid-column: 1 / -1;
@@ -262,6 +267,69 @@ select:focus,
 textarea:focus {
   border-color: var(--teal);
   box-shadow: 0 0 0 3px rgba(0, 109, 119, 0.14);
+}
+
+.linkedin-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(0, 109, 119, 0.28);
+  border-radius: var(--radius);
+  background: #f8fbfa;
+  padding: 13px;
+}
+
+.linkedin-panel legend {
+  color: var(--teal);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 0 6px;
+  text-transform: uppercase;
+}
+
+.linkedin-intro {
+  display: grid;
+  gap: 3px;
+}
+
+.linkedin-intro strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.linkedin-intro span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.linkedin-panel label {
+  display: grid;
+  gap: 6px;
+}
+
+.linkedin-action {
+  min-height: 42px;
+  border: 1px solid #0a66c2;
+  border-radius: 6px;
+  background: #0a66c2;
+  color: #fff;
+  font-weight: 900;
+}
+
+.linkedin-action:hover {
+  background: #084f97;
+}
+
+.linkedin-status {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.linkedin-status.is-verified {
+  color: var(--green);
 }
 
 .privacy-strip {
@@ -426,6 +494,12 @@ textarea:focus {
   border-color: rgba(200, 91, 77, 0.28);
   background: rgba(200, 91, 77, 0.08);
   color: #7d382f;
+}
+
+.pill.verified {
+  border-color: rgba(110, 141, 69, 0.38);
+  background: rgba(110, 141, 69, 0.11);
+  color: #4d6b2c;
 }
 
 .entry-note {
@@ -1157,7 +1231,8 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
-  .two-col {
+  .two-col,
+  .comp-field {
     grid-column: 1 / -1;
   }
 
