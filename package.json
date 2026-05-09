@@ -1,0 +1,13 @@
+{
+  "name": "fairpay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FairPay compensation sharing website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
