@@ -18,8 +18,9 @@
         </a>
         <div class="topbar-metrics" aria-label="Community metrics">
           <span><strong id="headerReportCount">0</strong> reports</span>
-          <span><strong id="headerIndustryCount">0</strong> industries</span>
+          <span><strong id="headerIndustryCount">0</strong> companies</span>
           <span><strong id="headerMedianPay">$0</strong> median</span>
+          <a class="login-link" id="authLink" href="/login.html">Log in</a>
         </div>
       </header>
 
@@ -32,31 +33,56 @@
 
           <form id="payForm" class="pay-form">
             <div class="field">
-              <label for="role">Role</label>
-              <input id="role" name="role" type="text" placeholder="Senior analyst" required />
-            </div>
-
-            <div class="field">
               <label for="industry">Industry</label>
               <select id="industry" name="industry" required></select>
             </div>
 
             <div class="field">
-              <label for="location">Location</label>
-              <input id="location" name="location" type="text" placeholder="Seattle, WA" required />
+              <label for="company">Company</label>
+              <select id="company" name="company" required></select>
             </div>
 
-            <div class="field two-col">
+            <div class="field conditional-field" id="newCompanyField" hidden>
+              <label for="newCompany">New company</label>
+              <input id="newCompany" name="newCompany" type="text" placeholder="Company name" maxlength="80" />
+            </div>
+
+            <div class="field">
+              <label for="role">Role</label>
+              <select id="role" name="role" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newRoleField" hidden>
+              <label for="newRole">New role</label>
+              <input id="newRole" name="newRole" type="text" placeholder="Senior analyst" maxlength="80" />
+            </div>
+
+            <div class="field">
+              <label for="location">Location</label>
+              <select id="location" name="location" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newLocationField" hidden>
+              <label for="newLocation">New city</label>
+              <input id="newLocation" name="newLocation" type="text" placeholder="Seattle, WA" maxlength="80" />
+            </div>
+
+            <div class="field comp-field">
               <label for="payType">Pay type</label>
               <select id="payType" name="payType" required>
-                <option value="salary">Annual total</option>
-                <option value="hourly">Hourly rate</option>
+                <option value="salary">Annual base</option>
+                <option value="hourly">Hourly base</option>
               </select>
             </div>
 
-            <div class="field two-col">
-              <label for="payAmount" id="payAmountLabel">Annual total pay</label>
-              <input id="payAmount" name="payAmount" type="number" min="1" step="1000" placeholder="120000" required />
+            <div class="field comp-field">
+              <label for="payAmount" id="payAmountLabel">Base pay</label>
+              <input id="payAmount" name="payAmount" type="number" min="1" step="1" placeholder="120000" required />
+            </div>
+
+            <div class="field comp-field">
+              <label for="bonusAmount">Bonus</label>
+              <input id="bonusAmount" name="bonusAmount" type="number" min="0" step="1" placeholder="10000" value="0" required />
             </div>
 
             <div class="field">
@@ -76,7 +102,8 @@
               <select id="gender" name="gender" required>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Others">Others</option>
+                <option value="Nonbinary">Nonbinary</option>
+                <option value="Undisclosed">Prefer not to say</option>
               </select>
             </div>
 
@@ -106,13 +133,39 @@
               <textarea id="note" name="note" rows="4" maxlength="180" placeholder="Union shop, night shift differential, negotiated after competing offer"></textarea>
             </div>
 
+            <fieldset class="linkedin-panel">
+              <legend>LinkedIn verification</legend>
+
+              <div class="linkedin-intro">
+                <strong>Verify at the end with LinkedIn</strong>
+                <span>Your public report stays anonymous. LinkedIn is used only to confirm contributor identity and reduce fake submissions.</span>
+              </div>
+
+              <label for="linkedinUrl">
+                <span>LinkedIn profile link</span>
+                <input
+                  id="linkedinUrl"
+                  name="linkedinUrl"
+                  type="url"
+                  placeholder="https://www.linkedin.com/in/your-profile"
+                  pattern="https://.*linkedin\.com/.*"
+                  required
+                />
+              </label>
+
+              <button class="linkedin-action" type="button" id="linkedinVerify">Verify with LinkedIn</button>
+
+              <input id="linkedinVerified" name="linkedinVerified" type="hidden" value="false" />
+              <p id="linkedinStatus" class="linkedin-status" aria-live="polite">LinkedIn verification required before posting.</p>
+            </fieldset>
+
             <div class="privacy-strip" aria-label="Anonymity safeguards">
               <span>No names</span>
-              <span>No employer field</span>
-              <span>Rounded pay</span>
+              <span>Company grouped</span>
+              <span>LinkedIn verified</span>
             </div>
 
-            <button class="primary-action" type="submit">Post anonymous report</button>
+            <button class="primary-action" type="submit">Post verified anonymous report</button>
           </form>
         </section>
 
@@ -128,11 +181,11 @@
           <div class="filters" aria-label="Salary report filters">
             <label class="search-field" for="searchInput">
               <span>Search</span>
-              <input id="searchInput" type="search" placeholder="Role, city, industry, note" />
+              <input id="searchInput" type="search" placeholder="Role, company, city, note" />
             </label>
 
             <label for="industryFilter">
-              <span>Industry</span>
+              <span>Company</span>
               <select id="industryFilter"></select>
             </label>
 
@@ -191,15 +244,15 @@
 
           <div class="chart-block" aria-labelledby="distributionTitle">
             <div class="mini-heading">
-              <h3 id="distributionTitle">Distribution by gender</h3>
+              <h3 id="distributionTitle">Pay distribution</h3>
               <span id="distributionLabel">All reports</span>
             </div>
-            <div id="distributionChart" class="gender-distributions"></div>
+            <div id="distributionChart" class="distribution-chart"></div>
           </div>
 
           <div class="chart-block" aria-labelledby="industryTitle">
             <div class="mini-heading">
-              <h3 id="industryTitle">Industry medians</h3>
+              <h3 id="industryTitle">Company medians</h3>
               <span>annualized</span>
             </div>
             <div id="industryBreakdown" class="industry-breakdown"></div>
@@ -210,13 +263,20 @@
             <div class="score-ring" aria-label="Trust score 84 out of 100">
               <span>84</span>
             </div>
-            <p>Posts combine role, industry, location, level, work style, and rounded pay without collecting employer names.</p>
+            <p>Contributors verify through LinkedIn before posting, while public reports stay anonymous and employer names stay out.</p>
           </div>
         </aside>
       </main>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="reportDrawer" class="report-drawer" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <button class="drawer-close" type="button" data-close-drawer aria-label="Close report insights">Close</button>
+        <div id="drawerContent"></div>
+      </section>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
