@@ -21,6 +21,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background:
@@ -494,6 +498,17 @@ textarea:focus {
   border-color: rgba(200, 91, 77, 0.28);
   background: rgba(200, 91, 77, 0.08);
   color: #7d382f;
+}
+
+.pill.company {
+  border-color: rgba(0, 109, 119, 0.24);
+  background: var(--teal-soft);
+  color: #174b50;
+}
+
+.conditional-field:not([hidden]) {
+  border-left: 3px solid var(--teal);
+  padding-left: 10px;
 }
 
 .pill.verified {

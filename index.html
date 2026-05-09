@@ -18,7 +18,7 @@
         </a>
         <div class="topbar-metrics" aria-label="Community metrics">
           <span><strong id="headerReportCount">0</strong> reports</span>
-          <span><strong id="headerIndustryCount">0</strong> industries</span>
+          <span><strong id="headerIndustryCount">0</strong> companies</span>
           <span><strong id="headerMedianPay">$0</strong> median</span>
           <a class="login-link" id="authLink" href="/login.html">Log in</a>
         </div>
@@ -33,18 +33,38 @@
 
           <form id="payForm" class="pay-form">
             <div class="field">
-              <label for="role">Role</label>
-              <input id="role" name="role" type="text" placeholder="Senior analyst" required />
-            </div>
-
-            <div class="field">
               <label for="industry">Industry</label>
               <select id="industry" name="industry" required></select>
             </div>
 
             <div class="field">
+              <label for="company">Company</label>
+              <select id="company" name="company" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newCompanyField" hidden>
+              <label for="newCompany">New company</label>
+              <input id="newCompany" name="newCompany" type="text" placeholder="Company name" maxlength="80" />
+            </div>
+
+            <div class="field">
+              <label for="role">Role</label>
+              <select id="role" name="role" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newRoleField" hidden>
+              <label for="newRole">New role</label>
+              <input id="newRole" name="newRole" type="text" placeholder="Senior analyst" maxlength="80" />
+            </div>
+
+            <div class="field">
               <label for="location">Location</label>
-              <input id="location" name="location" type="text" placeholder="Seattle, WA" required />
+              <select id="location" name="location" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newLocationField" hidden>
+              <label for="newLocation">New city</label>
+              <input id="newLocation" name="newLocation" type="text" placeholder="Seattle, WA" maxlength="80" />
             </div>
 
             <div class="field comp-field">
@@ -57,12 +77,12 @@
 
             <div class="field comp-field">
               <label for="payAmount" id="payAmountLabel">Base pay</label>
-              <input id="payAmount" name="payAmount" type="number" min="1" step="1000" placeholder="120000" required />
+              <input id="payAmount" name="payAmount" type="number" min="1" step="1" placeholder="120000" required />
             </div>
 
             <div class="field comp-field">
               <label for="bonusAmount">Bonus</label>
-              <input id="bonusAmount" name="bonusAmount" type="number" min="0" step="1000" placeholder="10000" value="0" required />
+              <input id="bonusAmount" name="bonusAmount" type="number" min="0" step="1" placeholder="10000" value="0" required />
             </div>
 
             <div class="field">
@@ -141,7 +161,7 @@
 
             <div class="privacy-strip" aria-label="Anonymity safeguards">
               <span>No names</span>
-              <span>No employer field</span>
+              <span>Company grouped</span>
               <span>LinkedIn verified</span>
             </div>
 
@@ -161,11 +181,11 @@
           <div class="filters" aria-label="Salary report filters">
             <label class="search-field" for="searchInput">
               <span>Search</span>
-              <input id="searchInput" type="search" placeholder="Role, city, industry, note" />
+              <input id="searchInput" type="search" placeholder="Role, company, city, note" />
             </label>
 
             <label for="industryFilter">
-              <span>Industry</span>
+              <span>Company</span>
               <select id="industryFilter"></select>
             </label>
 
@@ -232,7 +252,7 @@
 
           <div class="chart-block" aria-labelledby="industryTitle">
             <div class="mini-heading">
-              <h3 id="industryTitle">Industry medians</h3>
+              <h3 id="industryTitle">Company medians</h3>
               <span>annualized</span>
             </div>
             <div id="industryBreakdown" class="industry-breakdown"></div>

@@ -13,13 +13,37 @@ const industries = [
   "Logistics",
   "Public Sector",
   "Media",
-  "Energy"
+  "Energy",
+  "Other"
 ];
+
+const defaultCompanies = [
+  "Acme Tech",
+  "Bayfront Health",
+  "Civic Works",
+  "Metro Schools",
+  "Northstar Finance",
+  "Union Local 48"
+];
+
+const defaultRoles = [
+  "Data analyst",
+  "Senior product designer",
+  "ICU registered nurse",
+  "Journeyman electrician",
+  "Public school teacher",
+  "Customer success manager"
+];
+
+const ADD_NEW_COMPANY = "__add_new_company__";
+const ADD_NEW_ROLE = "__add_new_role__";
+const ADD_NEW_LOCATION = "__add_new_location__";
 
 const sampleReports = [
   {
     id: "sample-1",
     role: "Senior product designer",
+    company: "Acme Tech",
     industry: "Technology",
     location: "San Francisco, CA",
     annualPay: 184000,
@@ -40,6 +64,7 @@ const sampleReports = [
   {
     id: "sample-2",
     role: "ICU registered nurse",
+    company: "Bayfront Health",
     industry: "Healthcare",
     location: "Chicago, IL",
     annualPay: 98500,
@@ -60,6 +85,7 @@ const sampleReports = [
   {
     id: "sample-3",
     role: "Journeyman electrician",
+    company: "Union Local 48",
     industry: "Construction",
     location: "Denver, CO",
     annualPay: 87360,
@@ -80,6 +106,7 @@ const sampleReports = [
   {
     id: "sample-4",
     role: "Data analyst",
+    company: "Northstar Finance",
     industry: "Finance",
     location: "Charlotte, NC",
     annualPay: 106000,
@@ -100,6 +127,7 @@ const sampleReports = [
   {
     id: "sample-5",
     role: "Public school teacher",
+    company: "Metro Schools",
     industry: "Education",
     location: "Minneapolis, MN",
     annualPay: 62400,
@@ -120,6 +148,7 @@ const sampleReports = [
   {
     id: "sample-6",
     role: "Sous chef",
+    company: "Austin Table Group",
     industry: "Hospitality",
     location: "Austin, TX",
     annualPay: 57200,
@@ -140,6 +169,7 @@ const sampleReports = [
   {
     id: "sample-7",
     role: "Union machinist",
+    company: "Great Lakes Manufacturing",
     industry: "Manufacturing",
     location: "Detroit, MI",
     annualPay: 79040,
@@ -160,6 +190,7 @@ const sampleReports = [
   {
     id: "sample-8",
     role: "Warehouse operations lead",
+    company: "Desert Logistics",
     industry: "Logistics",
     location: "Phoenix, AZ",
     annualPay: 63200,
@@ -180,6 +211,7 @@ const sampleReports = [
   {
     id: "sample-9",
     role: "Customer success manager",
+    company: "Acme Tech",
     industry: "Technology",
     location: "Raleigh, NC",
     annualPay: 128000,
@@ -200,6 +232,7 @@ const sampleReports = [
   {
     id: "sample-10",
     role: "City transportation planner",
+    company: "Civic Works",
     industry: "Public Sector",
     location: "Portland, OR",
     annualPay: 88400,
@@ -220,6 +253,7 @@ const sampleReports = [
   {
     id: "sample-11",
     role: "Retail store manager",
+    company: "Market Square Retail",
     industry: "Retail",
     location: "Columbus, OH",
     annualPay: 74200,
@@ -240,6 +274,7 @@ const sampleReports = [
   {
     id: "sample-12",
     role: "Wind turbine technician",
+    company: "Prairie Wind Energy",
     industry: "Energy",
     location: "Amarillo, TX",
     annualPay: 81120,
@@ -266,15 +301,25 @@ const state = {
   activeReportId: null,
   curveFilter: "All",
   sort: "newest",
-  userReports: loadUserReports(),
+  userReports: [],
+  companies: [...defaultCompanies],
+  roles: [...defaultRoles],
+  locations: [],
   reactions: loadReactions()
 };
 
 const elements = {
   form: document.querySelector("#payForm"),
   role: document.querySelector("#role"),
+  newRole: document.querySelector("#newRole"),
+  newRoleField: document.querySelector("#newRoleField"),
+  company: document.querySelector("#company"),
+  newCompany: document.querySelector("#newCompany"),
+  newCompanyField: document.querySelector("#newCompanyField"),
   industry: document.querySelector("#industry"),
   location: document.querySelector("#location"),
+  newLocation: document.querySelector("#newLocation"),
+  newLocationField: document.querySelector("#newLocationField"),
   payType: document.querySelector("#payType"),
   payAmount: document.querySelector("#payAmount"),
   payAmountLabel: document.querySelector("#payAmountLabel"),
@@ -319,8 +364,55 @@ function loadUserReports() {
   }
 }
 
-function saveUserReports() {
+async function loadServerReports() {
+  try {
+    const response = await fetch("/api/reports");
+    if (!response.ok) throw new Error("Could not load reports");
+
+    const payload = await response.json();
+    state.userReports = Array.isArray(payload.reports) ? payload.reports : [];
+    mergeOptionsFromReports(state.userReports);
+    populateEntitySelects();
+  } catch {
+    state.userReports = loadUserReports();
+    mergeOptionsFromReports(state.userReports);
+    populateEntitySelects();
+    showToast("Using reports saved on this browser until the server is reachable.");
+  }
+}
+
+async function loadServerOptions() {
+  try {
+    const response = await fetch("/api/options");
+    if (!response.ok) throw new Error("Could not load options");
+
+    const payload = await response.json();
+    state.companies = uniqueSorted([...(payload.companies || []), ...state.companies]);
+    state.roles = uniqueSorted([...(payload.roles || []), ...state.roles]);
+    state.locations = uniqueSorted([...(payload.locations || []), ...state.locations]);
+  } catch {
+    mergeOptionsFromReports(loadUserReports());
+  }
+}
+
+async function saveUserReport(report) {
+  const response = await fetch("/api/reports", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(report)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error((payload.errors || ["Could not save report."]).join(" "));
+  }
+
+  state.userReports.unshift(payload.report);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.userReports));
+  return payload.report;
 }
 
 function loadReactions() {
@@ -337,6 +429,16 @@ function saveReactions() {
 
 function allReports() {
   return [...state.userReports, ...sampleReports];
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.map((value) => cleanText(value, 80)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function mergeOptionsFromReports(reports) {
+  state.companies = uniqueSorted([...state.companies, ...sampleReports.map((report) => report.company), ...reports.map((report) => report.company)]);
+  state.roles = uniqueSorted([...state.roles, ...sampleReports.map((report) => report.role), ...reports.map((report) => report.role)]);
+  state.locations = uniqueSorted([...state.locations, ...sampleReports.map((report) => report.location), ...reports.map((report) => report.location)]);
 }
 
 function formatMoney(value) {
@@ -412,6 +514,7 @@ function matchesSearch(report) {
 
   const haystack = [
     report.role,
+    report.company,
     report.industry,
     report.location,
     report.experience,
@@ -430,7 +533,7 @@ function filteredReports() {
   const filtered = allReports().filter((report) => {
     return (
       matchesSearch(report) &&
-      (state.industry === "All" || report.industry === state.industry) &&
+      (state.industry === "All" || report.company === state.industry) &&
       (state.experience === "All" || report.experience === state.experience)
     );
   });
@@ -446,16 +549,111 @@ function filteredReports() {
 function populateSelects() {
   elements.industry.innerHTML = industries.map((industry) => `<option value="${industry}">${industry}</option>`).join("");
   elements.industryFilter.innerHTML = [
-    '<option value="All">All industries</option>',
-    ...industries.map((industry) => `<option value="${industry}">${industry}</option>`)
+    '<option value="All">All companies</option>',
+    ...state.companies.map((company) => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`)
   ].join("");
+  populateEntitySelects();
+}
+
+function populateEntitySelects() {
+  if (!elements.company || !elements.role) return;
+
+  const selectedCompany = elements.company.value;
+  const selectedRole = elements.role.value;
+  const selectedLocation = elements.location.value;
+  const roleOptions = rolesForCompany(selectedCompany);
+  const companyOptions = companiesForIndustry(elements.industry.value);
+
+  elements.company.innerHTML = [
+    '<option value="">Select company</option>',
+    ...companyOptions.map((company) => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`),
+    `<option value="${ADD_NEW_COMPANY}">Add new company...</option>`
+  ].join("");
+
+  elements.role.innerHTML = [
+    '<option value="">Select role</option>',
+    ...roleOptions.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(role)}</option>`),
+    `<option value="${ADD_NEW_ROLE}">Add new role...</option>`
+  ].join("");
+
+  elements.location.innerHTML = [
+    '<option value="">Select city</option>',
+    ...state.locations.map((location) => `<option value="${escapeHtml(location)}">${escapeHtml(location)}</option>`),
+    `<option value="${ADD_NEW_LOCATION}">Add new city...</option>`
+  ].join("");
+
+  if (companyOptions.includes(selectedCompany) || selectedCompany === ADD_NEW_COMPANY) {
+    elements.company.value = selectedCompany;
+  }
+  if (roleOptions.includes(selectedRole) || selectedRole === ADD_NEW_ROLE) {
+    elements.role.value = selectedRole;
+  }
+  if (state.locations.includes(selectedLocation) || selectedLocation === ADD_NEW_LOCATION) {
+    elements.location.value = selectedLocation;
+  }
+  updateEntityFields();
+}
+
+function companiesForIndustry(industry) {
+  if (!industry || industry === "Other") {
+    return state.companies;
+  }
+
+  const companies = allReports()
+    .filter((report) => report.industry === industry)
+    .map((report) => report.company);
+
+  return uniqueSorted(companies.length ? companies : state.companies);
+}
+
+function rolesForCompany(company) {
+  if (!company || company === ADD_NEW_COMPANY) {
+    return state.roles;
+  }
+
+  const companyRoles = allReports()
+    .filter((report) => report.company === company)
+    .map((report) => report.role);
+
+  return uniqueSorted(companyRoles.length ? companyRoles : state.roles);
+}
+
+function inferIndustry(company, role) {
+  const reports = allReports();
+  const exact = reports.find((report) => report.company === company && report.role === role);
+  if (exact?.industry) return exact.industry;
+
+  const companyMatch = reports.find((report) => report.company === company);
+  if (companyMatch?.industry) return companyMatch.industry;
+
+  const roleMatch = reports.find((report) => report.role === role);
+  if (roleMatch?.industry) return roleMatch.industry;
+
+  return "Other";
+}
+
+function updateEntityFields() {
+  const addingCompany = elements.company.value === ADD_NEW_COMPANY;
+  const addingRole = elements.role.value === ADD_NEW_ROLE;
+  const addingLocation = elements.location.value === ADD_NEW_LOCATION;
+
+  elements.newCompanyField.hidden = !addingCompany;
+  elements.newRoleField.hidden = !addingRole;
+  elements.newLocationField.hidden = !addingLocation;
+  elements.newCompany.required = addingCompany;
+  elements.newRole.required = addingRole;
+  elements.newLocation.required = addingLocation;
+
+  if (!addingCompany) elements.newCompany.value = "";
+  if (!addingRole) elements.newRole.value = "";
+  if (!addingLocation) elements.newLocation.value = "";
 }
 
 function updatePayTypeCopy() {
   const isHourly = elements.payType.value === "hourly";
   elements.payAmountLabel.textContent = isHourly ? "Hourly base" : "Base pay";
   elements.payAmount.placeholder = isHourly ? "42" : "120000";
-  elements.payAmount.step = isHourly ? "0.25" : "1000";
+  elements.payAmount.step = isHourly ? "0.25" : "1";
 }
 
 function normalizePay(payType, value) {
@@ -471,12 +669,16 @@ function createReport(formData) {
   const payType = formData.get("payType");
   const rawPay = Number(formData.get("payAmount"));
   const bonusAmount = Number(formData.get("bonusAmount") || 0);
+  const selectedCompany = formData.get("company");
+  const selectedRole = formData.get("role");
+  const selectedLocation = formData.get("location");
 
   return {
     id: `user-${makeId()}`,
-    role: cleanText(formData.get("role")),
+    role: cleanText(selectedRole === ADD_NEW_ROLE ? formData.get("newRole") : selectedRole),
+    company: cleanText(selectedCompany === ADD_NEW_COMPANY ? formData.get("newCompany") : selectedCompany, 80),
     industry: formData.get("industry"),
-    location: cleanText(formData.get("location")),
+    location: cleanText(selectedLocation === ADD_NEW_LOCATION ? formData.get("newLocation") : selectedLocation),
     annualPay: normalizePay(payType, rawPay) + bonusAmount,
     rawPay,
     bonusAmount,
@@ -513,7 +715,7 @@ function cleanText(value) {
 
 function renderHeader(reports) {
   elements.headerReportCount.textContent = reports.length;
-  elements.headerIndustryCount.textContent = new Set(reports.map((report) => report.industry)).size;
+  elements.headerIndustryCount.textContent = new Set(reports.map((report) => report.company).filter(Boolean)).size;
   elements.headerMedianPay.textContent = compactMoney(median(reports.map((report) => report.annualPay)));
 }
 
@@ -571,11 +773,12 @@ function groupByIndustry(reports) {
   const groups = new Map();
 
   reports.forEach((report) => {
-    if (!groups.has(report.industry)) {
-      groups.set(report.industry, []);
+    const company = report.company || "Company grouped";
+    if (!groups.has(company)) {
+      groups.set(company, []);
     }
 
-    groups.get(report.industry).push(report.annualPay);
+    groups.get(company).push(report.annualPay);
   });
 
   return [...groups.entries()]
@@ -653,7 +856,7 @@ function renderFeed(reports) {
             <div>
               <h3 class="role-title">${escapeHtml(report.role)}</h3>
               <div class="pill-row">
-                <span class="pill industry">${escapeHtml(report.industry)}</span>
+                <span class="pill company">${escapeHtml(report.company || "Company grouped")}</span>
                 <span class="pill">${escapeHtml(report.location)}</span>
                 <span class="pill">${escapeHtml(report.experience)}</span>
                 <span class="pill">${escapeHtml(report.gender || "Undisclosed")}</span>
@@ -935,7 +1138,7 @@ function openReportDrawer(reportId, curveFilter = "All") {
         <span>${hourlyLabel}</span>
       </div>
       <div class="pill-row">
-        <span class="pill industry">${escapeHtml(report.industry)}</span>
+        <span class="pill company">${escapeHtml(report.company || "Company grouped")}</span>
         <span class="pill">${escapeHtml(report.location)}</span>
         <span class="pill">${escapeHtml(report.experience)}</span>
         <span class="pill">${escapeHtml(report.gender || "Undisclosed")}</span>
@@ -1069,7 +1272,7 @@ function toggleReaction(reportId, type) {
 }
 
 function bindEvents() {
-  elements.form.addEventListener("submit", (event) => {
+  elements.form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (elements.linkedinVerified.value !== "true") {
       showToast("Verify with LinkedIn before posting.");
@@ -1080,21 +1283,42 @@ function bindEvents() {
     const formData = new FormData(elements.form);
     const report = createReport(formData);
 
-    state.userReports.unshift(report);
-    saveUserReports();
-    elements.form.reset();
-    elements.experience.value = "Entry";
-    elements.gender.value = "Male";
-    elements.workStyle.value = "On-site";
-    elements.companySize.value = "1-50";
-    elements.bonusAmount.value = "0";
-    resetLinkedInVerification();
-    updatePayTypeCopy();
-    render();
-    showToast("LinkedIn-verified anonymous report posted on this device.");
+    try {
+      await saveUserReport(report);
+      if (report.company && !state.companies.includes(report.company)) state.companies.push(report.company);
+      if (report.role && !state.roles.includes(report.role)) state.roles.push(report.role);
+      if (report.location && !state.locations.includes(report.location)) state.locations.push(report.location);
+      state.companies = uniqueSorted(state.companies);
+      state.roles = uniqueSorted(state.roles);
+      state.locations = uniqueSorted(state.locations);
+      elements.form.reset();
+      populateEntitySelects();
+      elements.experience.value = "Entry";
+      elements.gender.value = "Male";
+      elements.workStyle.value = "On-site";
+      elements.companySize.value = "1-50";
+      elements.bonusAmount.value = "0";
+      resetLinkedInVerification();
+      updatePayTypeCopy();
+      render();
+      showToast("LinkedIn-verified anonymous report saved to the server.");
+    } catch (error) {
+      showToast(error.message || "Could not save report to the server.");
+    }
   });
 
   elements.payType.addEventListener("change", updatePayTypeCopy);
+  elements.industry.addEventListener("change", () => {
+    elements.company.value = "";
+    elements.role.value = "";
+    populateEntitySelects();
+  });
+  elements.company.addEventListener("change", () => {
+    populateEntitySelects();
+    updateEntityFields();
+  });
+  elements.role.addEventListener("change", updateEntityFields);
+  elements.location.addEventListener("change", updateEntityFields);
 
   elements.linkedinVerify.addEventListener("click", () => {
     if (!isLinkedInUrl(elements.linkedinUrl.value)) {
@@ -1212,3 +1436,7 @@ updatePayTypeCopy();
 bindEvents();
 render();
 renderAuthState();
+Promise.all([loadServerOptions(), loadServerReports()]).then(() => {
+  populateSelects();
+  render();
+});
