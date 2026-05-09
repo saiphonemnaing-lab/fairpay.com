@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WageSignal | Anonymous Pay Sharing</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="WageSignal home">
+          <span class="brand-mark" aria-hidden="true">WS</span>
+          <span>
+            <strong>WageSignal</strong>
+            <small>anonymous compensation exchange</small>
+          </span>
+        </a>
+        <div class="topbar-metrics" aria-label="Community metrics">
+          <span><strong id="headerReportCount">0</strong> reports</span>
+          <span><strong id="headerIndustryCount">0</strong> industries</span>
+          <span><strong id="headerMedianPay">$0</strong> median</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="submit-panel tool-panel" aria-labelledby="submitTitle">
+          <div class="section-heading">
+            <p class="eyebrow">Contribute</p>
+            <h1 id="submitTitle">Share pay anonymously</h1>
+          </div>
+
+          <form id="payForm" class="pay-form">
+            <div class="field">
+              <label for="role">Role</label>
+              <input id="role" name="role" type="text" placeholder="Senior analyst" required />
+            </div>
+
+            <div class="field">
+              <label for="industry">Industry</label>
+              <select id="industry" name="industry" required></select>
+            </div>
+
+            <div class="field">
+              <label for="location">Location</label>
+              <input id="location" name="location" type="text" placeholder="Seattle, WA" required />
+            </div>
+
+            <div class="field two-col">
+              <label for="payType">Pay type</label>
+              <select id="payType" name="payType" required>
+                <option value="salary">Annual total</option>
+                <option value="hourly">Hourly rate</option>
+              </select>
+            </div>
+
+            <div class="field two-col">
+              <label for="payAmount" id="payAmountLabel">Annual total pay</label>
+              <input id="payAmount" name="payAmount" type="number" min="1" step="1000" placeholder="120000" required />
+            </div>
+
+            <div class="field">
+              <label for="experience">Experience</label>
+              <select id="experience" name="experience" required>
+                <option value="Entry">Entry</option>
+                <option value="Mid">Mid</option>
+                <option value="Senior">Senior</option>
+                <option value="Lead">Lead</option>
+                <option value="Manager">Manager</option>
+                <option value="Director+">Director+</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="workStyle">Work style</label>
+              <select id="workStyle" name="workStyle" required>
+                <option value="On-site">On-site</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Remote">Remote</option>
+                <option value="Field">Field</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="companySize">Organization size</label>
+              <select id="companySize" name="companySize" required>
+                <option value="1-50">1-50</option>
+                <option value="51-250">51-250</option>
+                <option value="251-1k">251-1k</option>
+                <option value="1k-10k">1k-10k</option>
+                <option value="10k+">10k+</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="note">Context</label>
+              <textarea id="note" name="note" rows="4" maxlength="180" placeholder="Union shop, night shift differential, negotiated after competing offer"></textarea>
+            </div>
+
+            <div class="privacy-strip" aria-label="Anonymity safeguards">
+              <span>No names</span>
+              <span>No employer field</span>
+              <span>Rounded pay</span>
+            </div>
+
+            <button class="primary-action" type="submit">Post anonymous report</button>
+          </form>
+        </section>
+
+        <section class="feed-panel" aria-labelledby="feedTitle">
+          <div class="feed-heading">
+            <div>
+              <p class="eyebrow">Community feed</p>
+              <h2 id="feedTitle">Recent salary reports</h2>
+            </div>
+            <button class="ghost-action" id="resetFilters" type="button">Reset</button>
+          </div>
+
+          <div class="filters" aria-label="Salary report filters">
+            <label class="search-field" for="searchInput">
+              <span>Search</span>
+              <input id="searchInput" type="search" placeholder="Role, city, industry, note" />
+            </label>
+
+            <label for="industryFilter">
+              <span>Industry</span>
+              <select id="industryFilter"></select>
+            </label>
+
+            <label for="experienceFilter">
+              <span>Experience</span>
+              <select id="experienceFilter">
+                <option value="All">All levels</option>
+                <option value="Entry">Entry</option>
+                <option value="Mid">Mid</option>
+                <option value="Senior">Senior</option>
+                <option value="Lead">Lead</option>
+                <option value="Manager">Manager</option>
+                <option value="Director+">Director+</option>
+              </select>
+            </label>
+
+            <label for="sortSelect">
+              <span>Sort</span>
+              <select id="sortSelect">
+                <option value="newest">Newest</option>
+                <option value="highest">Highest pay</option>
+                <option value="lowest">Lowest pay</option>
+                <option value="helpful">Most helpful</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="activeSummary" class="active-summary" aria-live="polite"></div>
+          <div id="feedList" class="feed-list"></div>
+        </section>
+
+        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle">
+          <div class="section-heading">
+            <p class="eyebrow">Benchmarks</p>
+            <h2 id="insightsTitle">Live pay signal</h2>
+          </div>
+
+          <div class="stat-grid" aria-label="Filtered salary benchmarks">
+            <div class="stat-tile">
+              <span>Median</span>
+              <strong id="medianStat">$0</strong>
+            </div>
+            <div class="stat-tile">
+              <span>Middle 50%</span>
+              <strong id="rangeStat">$0-$0</strong>
+            </div>
+            <div class="stat-tile">
+              <span>Top signal</span>
+              <strong id="topStat">$0</strong>
+            </div>
+            <div class="stat-tile">
+              <span>Sample</span>
+              <strong id="sampleStat">0</strong>
+            </div>
+          </div>
+
+          <div class="chart-block" aria-labelledby="distributionTitle">
+            <div class="mini-heading">
+              <h3 id="distributionTitle">Pay distribution</h3>
+              <span id="distributionLabel">All reports</span>
+            </div>
+            <div id="distributionChart" class="distribution-chart"></div>
+          </div>
+
+          <div class="chart-block" aria-labelledby="industryTitle">
+            <div class="mini-heading">
+              <h3 id="industryTitle">Industry medians</h3>
+              <span>annualized</span>
+            </div>
+            <div id="industryBreakdown" class="industry-breakdown"></div>
+          </div>
+
+          <div class="trust-panel" aria-labelledby="trustTitle">
+            <h3 id="trustTitle">Trust score</h3>
+            <div class="score-ring" aria-label="Trust score 84 out of 100">
+              <span>84</span>
+            </div>
+            <p>Posts combine role, industry, location, level, work style, and rounded pay without collecting employer names.</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
