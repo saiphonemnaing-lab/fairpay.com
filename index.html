@@ -72,6 +72,15 @@
             </div>
 
             <div class="field">
+              <label for="gender">Gender group</label>
+              <select id="gender" name="gender" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+
+            <div class="field">
               <label for="workStyle">Work style</label>
               <select id="workStyle" name="workStyle" required>
                 <option value="On-site">On-site</option>
@@ -182,10 +191,10 @@
 
           <div class="chart-block" aria-labelledby="distributionTitle">
             <div class="mini-heading">
-              <h3 id="distributionTitle">Pay distribution</h3>
+              <h3 id="distributionTitle">Distribution by gender</h3>
               <span id="distributionLabel">All reports</span>
             </div>
-            <div id="distributionChart" class="distribution-chart"></div>
+            <div id="distributionChart" class="gender-distributions"></div>
           </div>
 
           <div class="chart-block" aria-labelledby="industryTitle">

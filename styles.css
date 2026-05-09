@@ -182,7 +182,8 @@ h2 {
   font-size: 1.4rem;
 }
 
-h3 {
+h3,
+h4 {
   margin-bottom: 0;
   font-size: 0.95rem;
 }
@@ -476,44 +477,130 @@ textarea:focus {
   font-weight: 800;
 }
 
-.distribution-chart {
+.gender-distributions {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin-top: 13px;
 }
 
-.dist-row {
+.gender-card {
   display: grid;
-  grid-template-columns: 74px 1fr 32px;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 12px;
+}
+
+.gender-card.is-empty {
+  background: #fbfcfc;
+}
+
+.gender-card.is-empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.gender-card-top,
+.distribution-legend {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
-.dist-row span {
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 800;
+.gender-card-top h4 {
+  margin: 0;
+  font-size: 0.94rem;
 }
 
-.bar-track {
-  height: 14px;
+.gender-card-top span,
+.distribution-legend span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.distribution-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.distribution-metrics span {
+  min-width: 0;
+  border: 1px solid #e0e7e6;
+  border-radius: 6px;
+  background: #f8fbfa;
+  color: var(--muted);
+  padding: 8px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.distribution-metrics strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.1;
+  margin-bottom: 3px;
+  text-transform: none;
+}
+
+.sd-track {
+  position: relative;
+  height: 22px;
   overflow: hidden;
   border-radius: 999px;
   background: #e5eceb;
 }
 
-.bar-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--teal);
+.sd-band {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--teal));
 }
 
-.dist-row:nth-child(2n) .bar-fill {
-  background: var(--blue);
+.sd-marker {
+  position: absolute;
+  top: 1px;
+  width: 3px;
+  height: 20px;
+  border-radius: 999px;
+  transform: translateX(-50%);
 }
 
-.dist-row:nth-child(3n) .bar-fill {
+.mean-marker {
   background: var(--coral);
+}
+
+.median-marker {
+  background: var(--gold);
+}
+
+.distribution-legend {
+  justify-content: flex-start;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.legend-dot.mean {
+  background: var(--coral);
+}
+
+.legend-dot.median {
+  background: var(--gold);
 }
 
 .industry-breakdown {

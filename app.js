@@ -16,6 +16,8 @@ const industries = [
   "Energy"
 ];
 
+const genderGroups = ["Male", "Female", "Others"];
+
 const sampleReports = [
   {
     id: "sample-1",
@@ -26,6 +28,7 @@ const sampleReports = [
     rawPay: 184000,
     payType: "salary",
     experience: "Senior",
+    gender: "Female",
     workStyle: "Hybrid",
     companySize: "1k-10k",
     note: "Base plus annual bonus. Offer improved after sharing a competing range from a peer group.",
@@ -43,6 +46,7 @@ const sampleReports = [
     rawPay: 47,
     payType: "hourly",
     experience: "Mid",
+    gender: "Female",
     workStyle: "On-site",
     companySize: "10k+",
     note: "Night differential and weekend rotation account for about 12 percent of total pay.",
@@ -60,6 +64,7 @@ const sampleReports = [
     rawPay: 42,
     payType: "hourly",
     experience: "Senior",
+    gender: "Male",
     workStyle: "Field",
     companySize: "51-250",
     note: "Union site with overtime available most months. Benefits are separate from this pay figure.",
@@ -77,6 +82,7 @@ const sampleReports = [
     rawPay: 106000,
     payType: "salary",
     experience: "Mid",
+    gender: "Others",
     workStyle: "Hybrid",
     companySize: "10k+",
     note: "Includes 8 percent target bonus. SQL, dashboarding, and forecasting are the main skill mix.",
@@ -94,6 +100,7 @@ const sampleReports = [
     rawPay: 62400,
     payType: "salary",
     experience: "Senior",
+    gender: "Female",
     workStyle: "On-site",
     companySize: "1k-10k",
     note: "Tenth year on the scale with a masters stipend. Summer program pay excluded.",
@@ -111,6 +118,7 @@ const sampleReports = [
     rawPay: 57200,
     payType: "salary",
     experience: "Lead",
+    gender: "Male",
     workStyle: "On-site",
     companySize: "51-250",
     note: "Five-day schedule. Bonus depends on food cost targets and private event volume.",
@@ -128,6 +136,7 @@ const sampleReports = [
     rawPay: 38,
     payType: "hourly",
     experience: "Senior",
+    gender: "Male",
     workStyle: "On-site",
     companySize: "1k-10k",
     note: "Second shift premium included. Training new operators adds occasional overtime.",
@@ -145,6 +154,7 @@ const sampleReports = [
     rawPay: 63200,
     payType: "salary",
     experience: "Lead",
+    gender: "Female",
     workStyle: "On-site",
     companySize: "251-1k",
     note: "Supervises inbound team. Peak season bonus has ranged from 2 to 5 percent.",
@@ -162,6 +172,7 @@ const sampleReports = [
     rawPay: 128000,
     payType: "salary",
     experience: "Manager",
+    gender: "Others",
     workStyle: "Remote",
     companySize: "251-1k",
     note: "OTE includes base plus retention bonus. No commission on expansions.",
@@ -179,6 +190,7 @@ const sampleReports = [
     rawPay: 88400,
     payType: "salary",
     experience: "Mid",
+    gender: "Female",
     workStyle: "Hybrid",
     companySize: "1k-10k",
     note: "Step increase expected next fiscal year. Pension contribution is not included.",
@@ -196,6 +208,7 @@ const sampleReports = [
     rawPay: 74200,
     payType: "salary",
     experience: "Manager",
+    gender: "Male",
     workStyle: "On-site",
     companySize: "10k+",
     note: "Includes quarterly bonus at target. Holiday coverage changes total hours a lot.",
@@ -213,6 +226,7 @@ const sampleReports = [
     rawPay: 39,
     payType: "hourly",
     experience: "Mid",
+    gender: "Others",
     workStyle: "Field",
     companySize: "251-1k",
     note: "Travel weeks and safety certification premium are included in the hourly average.",
@@ -241,6 +255,7 @@ const elements = {
   payAmount: document.querySelector("#payAmount"),
   payAmountLabel: document.querySelector("#payAmountLabel"),
   experience: document.querySelector("#experience"),
+  gender: document.querySelector("#gender"),
   workStyle: document.querySelector("#workStyle"),
   companySize: document.querySelector("#companySize"),
   note: document.querySelector("#note"),
@@ -289,7 +304,10 @@ function saveReactions() {
 }
 
 function allReports() {
-  return [...state.userReports, ...sampleReports];
+  return [...state.userReports, ...sampleReports].map((report) => ({
+    ...report,
+    gender: genderGroups.includes(report.gender) ? report.gender : "Others"
+  }));
 }
 
 function formatMoney(value) {
@@ -368,6 +386,7 @@ function matchesSearch(report) {
     report.industry,
     report.location,
     report.experience,
+    report.gender,
     report.workStyle,
     report.companySize,
     report.note
@@ -432,6 +451,7 @@ function createReport(formData) {
     rawPay,
     payType,
     experience: formData.get("experience"),
+    gender: formData.get("gender"),
     workStyle: formData.get("workStyle"),
     companySize: formData.get("companySize"),
     note: cleanText(formData.get("note")) || "No extra context added.",
@@ -476,38 +496,91 @@ function renderStats(reports) {
   elements.distributionLabel.textContent = state.industry === "All" ? "All reports" : state.industry;
 }
 
-function renderDistribution(reports) {
-  const values = reports.map((report) => report.annualPay);
+function mean(values) {
+  if (!values.length) return 0;
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
 
-  if (!values.length) {
+function standardDeviation(values) {
+  if (values.length < 2) return 0;
+
+  const average = mean(values);
+  const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function renderDistribution(reports) {
+  const grouped = genderGroups.map((gender) => {
+    const values = reports.filter((report) => report.gender === gender).map((report) => report.annualPay);
+    const average = mean(values);
+    const middle = median(values);
+    const sd = standardDeviation(values);
+    const low = Math.max(0, average - sd * 2);
+    const high = average + sd * 2;
+
+    return {
+      gender,
+      values,
+      average,
+      middle,
+      sd,
+      low,
+      high
+    };
+  });
+
+  const groupsWithData = grouped.filter((group) => group.values.length);
+
+  if (!groupsWithData.length) {
     elements.distributionChart.innerHTML = '<div class="empty-state">No matching pay data.</div>';
     return;
   }
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(max - min, 1);
-  const binCount = Math.min(6, Math.max(3, Math.ceil(values.length / 2)));
-  const bins = Array.from({ length: binCount }, (_, index) => {
-    const start = min + (range / binCount) * index;
-    const end = index === binCount - 1 ? max + 1 : min + (range / binCount) * (index + 1);
-    const count = values.filter((value) => value >= start && value < end).length;
-    return { start, end, count };
-  });
+  const domainLow = Math.min(...groupsWithData.map((group) => group.low));
+  const domainHigh = Math.max(...groupsWithData.map((group) => group.high));
+  const domainRange = Math.max(domainHigh - domainLow, 1);
 
-  const highest = Math.max(...bins.map((bin) => bin.count), 1);
+  elements.distributionChart.innerHTML = grouped
+    .map((group) => {
+      if (!group.values.length) {
+        return `
+          <article class="gender-card is-empty">
+            <div class="gender-card-top">
+              <h4>${group.gender}</h4>
+              <span>0 reports</span>
+            </div>
+            <p>No matching pay reports yet.</p>
+          </article>
+        `;
+      }
 
-  elements.distributionChart.innerHTML = bins
-    .map((bin) => {
-      const width = Math.max(8, (bin.count / highest) * 100);
+      const lowPercent = ((group.low - domainLow) / domainRange) * 100;
+      const highPercent = ((group.high - domainLow) / domainRange) * 100;
+      const meanPercent = ((group.average - domainLow) / domainRange) * 100;
+      const medianPercent = ((group.middle - domainLow) / domainRange) * 100;
+      const bandWidth = Math.max(8, highPercent - lowPercent);
+
       return `
-        <div class="dist-row">
-          <span>${compactMoney(bin.start)}</span>
-          <div class="bar-track" aria-hidden="true">
-            <div class="bar-fill" style="width: ${width}%"></div>
+        <article class="gender-card">
+          <div class="gender-card-top">
+            <h4>${group.gender}</h4>
+            <span>${group.values.length} reports</span>
           </div>
-          <span>${bin.count}</span>
-        </div>
+          <div class="distribution-metrics">
+            <span><strong>${formatMoney(group.average)}</strong> Mean</span>
+            <span><strong>${formatMoney(group.middle)}</strong> Median</span>
+            <span><strong>${compactMoney(group.low)}-${compactMoney(group.high)}</strong> 2 SD</span>
+          </div>
+          <div class="sd-track" aria-label="${group.gender} pay distribution">
+            <span class="sd-band" style="left: ${lowPercent}%; width: ${bandWidth}%"></span>
+            <span class="sd-marker mean-marker" style="left: ${meanPercent}%"></span>
+            <span class="sd-marker median-marker" style="left: ${medianPercent}%"></span>
+          </div>
+          <div class="distribution-legend">
+            <span><i class="legend-dot mean"></i>Mean</span>
+            <span><i class="legend-dot median"></i>Median</span>
+          </div>
+        </article>
       `;
     })
     .join("");
@@ -596,6 +669,7 @@ function renderFeed(reports) {
                 <span class="pill industry">${escapeHtml(report.industry)}</span>
                 <span class="pill">${escapeHtml(report.location)}</span>
                 <span class="pill">${escapeHtml(report.experience)}</span>
+                <span class="pill">${escapeHtml(report.gender)}</span>
                 <span class="pill">${escapeHtml(report.workStyle)}</span>
                 <span class="pill">${escapeHtml(report.companySize)}</span>
               </div>
@@ -673,6 +747,7 @@ function bindEvents() {
     saveUserReports();
     elements.form.reset();
     elements.experience.value = "Entry";
+    elements.gender.value = "Male";
     elements.workStyle.value = "On-site";
     elements.companySize.value = "1-50";
     updatePayTypeCopy();
