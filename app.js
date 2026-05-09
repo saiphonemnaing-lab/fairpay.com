@@ -16,8 +16,6 @@ const industries = [
   "Energy"
 ];
 
-const genderGroups = ["Male", "Female", "Others"];
-
 const sampleReports = [
   {
     id: "sample-1",
@@ -82,7 +80,7 @@ const sampleReports = [
     rawPay: 106000,
     payType: "salary",
     experience: "Mid",
-    gender: "Others",
+    gender: "Female",
     workStyle: "Hybrid",
     companySize: "10k+",
     note: "Includes 8 percent target bonus. SQL, dashboarding, and forecasting are the main skill mix.",
@@ -154,7 +152,7 @@ const sampleReports = [
     rawPay: 63200,
     payType: "salary",
     experience: "Lead",
-    gender: "Female",
+    gender: "Undisclosed",
     workStyle: "On-site",
     companySize: "251-1k",
     note: "Supervises inbound team. Peak season bonus has ranged from 2 to 5 percent.",
@@ -172,7 +170,7 @@ const sampleReports = [
     rawPay: 128000,
     payType: "salary",
     experience: "Manager",
-    gender: "Others",
+    gender: "Female",
     workStyle: "Remote",
     companySize: "251-1k",
     note: "OTE includes base plus retention bonus. No commission on expansions.",
@@ -190,7 +188,7 @@ const sampleReports = [
     rawPay: 88400,
     payType: "salary",
     experience: "Mid",
-    gender: "Female",
+    gender: "Nonbinary",
     workStyle: "Hybrid",
     companySize: "1k-10k",
     note: "Step increase expected next fiscal year. Pension contribution is not included.",
@@ -226,7 +224,7 @@ const sampleReports = [
     rawPay: 39,
     payType: "hourly",
     experience: "Mid",
-    gender: "Others",
+    gender: "Undisclosed",
     workStyle: "Field",
     companySize: "251-1k",
     note: "Travel weeks and safety certification premium are included in the hourly average.",
@@ -241,6 +239,8 @@ const state = {
   search: "",
   industry: "All",
   experience: "All",
+  activeReportId: null,
+  curveFilter: "All",
   sort: "newest",
   userReports: loadUserReports(),
   reactions: loadReactions()
@@ -269,6 +269,7 @@ const elements = {
   headerReportCount: document.querySelector("#headerReportCount"),
   headerIndustryCount: document.querySelector("#headerIndustryCount"),
   headerMedianPay: document.querySelector("#headerMedianPay"),
+  authLink: document.querySelector("#authLink"),
   medianStat: document.querySelector("#medianStat"),
   rangeStat: document.querySelector("#rangeStat"),
   topStat: document.querySelector("#topStat"),
@@ -276,6 +277,8 @@ const elements = {
   distributionLabel: document.querySelector("#distributionLabel"),
   distributionChart: document.querySelector("#distributionChart"),
   industryBreakdown: document.querySelector("#industryBreakdown"),
+  reportDrawer: document.querySelector("#reportDrawer"),
+  drawerContent: document.querySelector("#drawerContent"),
   toast: document.querySelector("#toast")
 };
 
@@ -304,10 +307,7 @@ function saveReactions() {
 }
 
 function allReports() {
-  return [...state.userReports, ...sampleReports].map((report) => ({
-    ...report,
-    gender: genderGroups.includes(report.gender) ? report.gender : "Others"
-  }));
+  return [...state.userReports, ...sampleReports];
 }
 
 function formatMoney(value) {
@@ -496,91 +496,38 @@ function renderStats(reports) {
   elements.distributionLabel.textContent = state.industry === "All" ? "All reports" : state.industry;
 }
 
-function mean(values) {
-  if (!values.length) return 0;
-  return values.reduce((total, value) => total + value, 0) / values.length;
-}
-
-function standardDeviation(values) {
-  if (values.length < 2) return 0;
-
-  const average = mean(values);
-  const variance = values.reduce((total, value) => total + (value - average) ** 2, 0) / values.length;
-  return Math.sqrt(variance);
-}
-
 function renderDistribution(reports) {
-  const grouped = genderGroups.map((gender) => {
-    const values = reports.filter((report) => report.gender === gender).map((report) => report.annualPay);
-    const average = mean(values);
-    const middle = median(values);
-    const sd = standardDeviation(values);
-    const low = Math.max(0, average - sd * 2);
-    const high = average + sd * 2;
+  const values = reports.map((report) => report.annualPay);
 
-    return {
-      gender,
-      values,
-      average,
-      middle,
-      sd,
-      low,
-      high
-    };
-  });
-
-  const groupsWithData = grouped.filter((group) => group.values.length);
-
-  if (!groupsWithData.length) {
+  if (!values.length) {
     elements.distributionChart.innerHTML = '<div class="empty-state">No matching pay data.</div>';
     return;
   }
 
-  const domainLow = Math.min(...groupsWithData.map((group) => group.low));
-  const domainHigh = Math.max(...groupsWithData.map((group) => group.high));
-  const domainRange = Math.max(domainHigh - domainLow, 1);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(max - min, 1);
+  const binCount = Math.min(6, Math.max(3, Math.ceil(values.length / 2)));
+  const bins = Array.from({ length: binCount }, (_, index) => {
+    const start = min + (range / binCount) * index;
+    const end = index === binCount - 1 ? max + 1 : min + (range / binCount) * (index + 1);
+    const count = values.filter((value) => value >= start && value < end).length;
+    return { start, end, count };
+  });
 
-  elements.distributionChart.innerHTML = grouped
-    .map((group) => {
-      if (!group.values.length) {
-        return `
-          <article class="gender-card is-empty">
-            <div class="gender-card-top">
-              <h4>${group.gender}</h4>
-              <span>0 reports</span>
-            </div>
-            <p>No matching pay reports yet.</p>
-          </article>
-        `;
-      }
+  const highest = Math.max(...bins.map((bin) => bin.count), 1);
 
-      const lowPercent = ((group.low - domainLow) / domainRange) * 100;
-      const highPercent = ((group.high - domainLow) / domainRange) * 100;
-      const meanPercent = ((group.average - domainLow) / domainRange) * 100;
-      const medianPercent = ((group.middle - domainLow) / domainRange) * 100;
-      const bandWidth = Math.max(8, highPercent - lowPercent);
-
+  elements.distributionChart.innerHTML = bins
+    .map((bin) => {
+      const width = Math.max(8, (bin.count / highest) * 100);
       return `
-        <article class="gender-card">
-          <div class="gender-card-top">
-            <h4>${group.gender}</h4>
-            <span>${group.values.length} reports</span>
+        <div class="dist-row">
+          <span>${compactMoney(bin.start)}</span>
+          <div class="bar-track" aria-hidden="true">
+            <div class="bar-fill" style="width: ${width}%"></div>
           </div>
-          <div class="distribution-metrics">
-            <span><strong>${formatMoney(group.average)}</strong> Mean</span>
-            <span><strong>${formatMoney(group.middle)}</strong> Median</span>
-            <span><strong>${compactMoney(group.low)}-${compactMoney(group.high)}</strong> 2 SD</span>
-          </div>
-          <div class="sd-track" aria-label="${group.gender} pay distribution">
-            <span class="sd-band" style="left: ${lowPercent}%; width: ${bandWidth}%"></span>
-            <span class="sd-marker mean-marker" style="left: ${meanPercent}%"></span>
-            <span class="sd-marker median-marker" style="left: ${medianPercent}%"></span>
-          </div>
-          <div class="distribution-legend">
-            <span><i class="legend-dot mean"></i>Mean</span>
-            <span><i class="legend-dot median"></i>Median</span>
-          </div>
-        </article>
+          <span>${bin.count}</span>
+        </div>
       `;
     })
     .join("");
@@ -669,7 +616,7 @@ function renderFeed(reports) {
                 <span class="pill industry">${escapeHtml(report.industry)}</span>
                 <span class="pill">${escapeHtml(report.location)}</span>
                 <span class="pill">${escapeHtml(report.experience)}</span>
-                <span class="pill">${escapeHtml(report.gender)}</span>
+                <span class="pill">${escapeHtml(report.gender || "Undisclosed")}</span>
                 <span class="pill">${escapeHtml(report.workStyle)}</span>
                 <span class="pill">${escapeHtml(report.companySize)}</span>
               </div>
@@ -683,6 +630,9 @@ function renderFeed(reports) {
           <div class="entry-footer">
             <span class="entry-meta">Anonymous · ${formatDate(report.createdAt)}</span>
             <div class="entry-actions">
+              <button class="entry-action insight-trigger" type="button" data-open-report="${report.id}">
+                View insight
+              </button>
               <button class="entry-action ${activeHelpful}" type="button" data-action="helpful" data-id="${report.id}">
                 Helpful ${reactionCount(report, "helpful")}
               </button>
@@ -695,6 +645,328 @@ function renderFeed(reports) {
       `;
     })
     .join("");
+}
+
+function findReport(reportId) {
+  return allReports().find((report) => report.id === reportId);
+}
+
+function cityOf(location) {
+  return String(location || "").split(",")[0].trim();
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function percentileRank(values, value) {
+  if (!values.length) return 0;
+  const below = values.filter((candidate) => candidate < value).length;
+  const equal = values.filter((candidate) => candidate === value).length;
+  return Math.round(((below + equal * 0.5) / values.length) * 100);
+}
+
+function percentDelta(value, baseline) {
+  if (!baseline) return 0;
+  return Math.round(((value - baseline) / baseline) * 100);
+}
+
+function peerReports(report) {
+  const reports = allReports();
+  const exactPeers = reports.filter((candidate) => {
+    return (
+      candidate.id !== report.id &&
+      candidate.industry === report.industry &&
+      (candidate.experience === report.experience || candidate.workStyle === report.workStyle)
+    );
+  });
+
+  if (exactPeers.length >= 4) {
+    return [report, ...exactPeers];
+  }
+
+  const industryPeers = reports.filter((candidate) => candidate.industry === report.industry);
+  if (industryPeers.length >= 3) {
+    return industryPeers;
+  }
+
+  return reports;
+}
+
+function marketComparison(report, peers) {
+  const values = peers.map((candidate) => candidate.annualPay);
+  const roleMedian = median(values);
+  const industryValues = allReports()
+    .filter((candidate) => candidate.industry === report.industry)
+    .map((candidate) => candidate.annualPay);
+  const locationValues = allReports()
+    .filter((candidate) => cityOf(candidate.location) === cityOf(report.location))
+    .map((candidate) => candidate.annualPay);
+
+  return {
+    peerCount: peers.length,
+    percentile: percentileRank(values, report.annualPay),
+    roleMedian,
+    industryMedian: median(industryValues),
+    locationMedian: median(locationValues.length ? locationValues : values),
+    middleLow: percentile(values, 25),
+    middleHigh: percentile(values, 75),
+    topSignal: Math.max(...values)
+  };
+}
+
+function groupReportsByGender(reports) {
+  const groups = new Map();
+
+  reports.forEach((report) => {
+    const gender = report.gender || "Undisclosed";
+    if (!groups.has(gender)) {
+      groups.set(gender, []);
+    }
+    groups.get(gender).push(report);
+  });
+
+  return [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+}
+
+function renderGenderRows(peers) {
+  const groups = groupReportsByGender(peers);
+  const values = peers.map((report) => report.annualPay);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(max - min, 1);
+
+  return groups
+    .map(([gender, reports]) => {
+      const groupValues = reports.map((report) => report.annualPay);
+      const groupMean = average(groupValues);
+      const groupMedian = median(groupValues);
+      const low = percentile(groupValues, 25);
+      const high = percentile(groupValues, 75);
+      const meanPosition = ((groupMean - min) / range) * 100;
+      const medianPosition = ((groupMedian - min) / range) * 100;
+      const bandStart = ((low - min) / range) * 100;
+      const bandWidth = Math.max(6, ((high - low) / range) * 100);
+
+      return `
+        <div class="equity-row">
+          <div class="equity-row-top">
+            <strong>${escapeHtml(gender)}</strong>
+            <span>${reports.length} reports</span>
+          </div>
+          <div class="equity-stats">
+            <span><strong>${formatMoney(groupMean)}</strong> mean</span>
+            <span><strong>${formatMoney(groupMedian)}</strong> median</span>
+            <span><strong>${compactMoney(low)}-${compactMoney(high)}</strong> middle 50%</span>
+          </div>
+          <div class="equity-track" aria-hidden="true">
+            <span class="equity-band" style="left: ${bandStart}%; width: ${bandWidth}%"></span>
+            <span class="equity-marker mean" style="left: ${meanPosition}%"></span>
+            <span class="equity-marker median" style="left: ${medianPosition}%"></span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function curvePoints(values, min, max) {
+  const range = Math.max(max - min, 1);
+  const checkpoints = [10, 25, 50, 75, 90];
+
+  return checkpoints
+    .map((checkpoint, index) => {
+      const value = percentile(values, checkpoint);
+      const x = 16 + index * 67;
+      const y = 104 - ((value - min) / range) * 76;
+      return `${x},${Math.max(18, Math.min(106, y))}`;
+    })
+    .join(" ");
+}
+
+function renderCurveToggle(groups, selected) {
+  const available = ["All", ...groups.map(([gender]) => gender)];
+
+  return `
+    <div class="curve-toggle" role="group" aria-label="Pay curve group">
+      ${available
+        .map((gender) => {
+          const isActive = gender === selected ? "is-active" : "";
+          return `<button class="${isActive}" type="button" data-curve-filter="${escapeHtml(gender)}">${escapeHtml(gender)}</button>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderPayCurve(peers, selected = "All") {
+  const allValues = peers.map((report) => report.annualPay);
+  const valuesByGender = groupReportsByGender(peers).slice(0, 3);
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
+  const allSeries = [
+    { label: "All reports", className: "all", values: allValues },
+    ...valuesByGender.map(([gender, reports]) => ({
+      label: gender,
+      className: gender.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      values: reports.map((report) => report.annualPay)
+    }))
+  ];
+  const series = selected === "All" ? allSeries : allSeries.filter((item) => item.label === selected);
+  const visibleSeries = series.length ? series : allSeries;
+
+  return `
+    <div class="curve-card">
+      <svg class="pay-curve" viewBox="0 0 304 124" role="img" aria-label="Percentile pay curve by gender group">
+        <line x1="16" y1="106" x2="284" y2="106"></line>
+        <line x1="16" y1="18" x2="16" y2="106"></line>
+        ${visibleSeries
+          .map((item) => {
+            return `<polyline class="curve-line ${item.className}" points="${curvePoints(item.values, min, max)}"></polyline>`;
+          })
+          .join("")}
+      </svg>
+      <div class="curve-legend">
+        ${visibleSeries.map((item) => `<span class="${item.className}">${escapeHtml(item.label)}</span>`).join("")}
+      </div>
+      <div class="curve-axis">
+        <span>10th</span>
+        <span>25th</span>
+        <span>50th</span>
+        <span>75th</span>
+        <span>90th</span>
+      </div>
+    </div>
+  `;
+}
+
+function insightFlags(report, comparison, peers) {
+  const flags = [];
+  const note = report.note.toLowerCase();
+  const adjustedGap = percentDelta(comparison.roleMedian, comparison.industryMedian);
+
+  if (note.includes("competing") || note.includes("offer") || note.includes("negotiated")) {
+    flags.push("Negotiation signal: reports mentioning competing offers often sit above peer median.");
+  }
+
+  if (note.includes("overtime") || note.includes("differential") || note.includes("bonus")) {
+    flags.push("Compensation mix: bonus, differential, or overtime may explain part of the total.");
+  }
+
+  if (comparison.percentile >= 75) {
+    flags.push("Market position: this report is in the upper quartile of comparable reports.");
+  } else if (comparison.percentile <= 25) {
+    flags.push("Market position: this report is in the lower quartile and may deserve a closer fairness check.");
+  }
+
+  flags.push(
+    peers.length >= 8
+      ? "Confidence: enough peer reports for a directional benchmark."
+      : "Confidence: sample is still thin, so treat this as an early signal."
+  );
+
+  flags.push(`Adjusted gap proxy: peer median is ${Math.abs(adjustedGap)}% ${adjustedGap >= 0 ? "above" : "below"} industry median.`);
+
+  return flags;
+}
+
+function openReportDrawer(reportId, curveFilter = "All") {
+  const report = findReport(reportId);
+  if (!report) return;
+
+  state.activeReportId = reportId;
+  state.curveFilter = curveFilter;
+  const peers = peerReports(report);
+  const comparison = marketComparison(report, peers);
+  const values = peers.map((candidate) => candidate.annualPay);
+  const genderGroups = groupReportsByGender(peers).slice(0, 3);
+  const hourlyLabel = report.payType === "hourly" ? `${formatHourly(report.rawPay)}/hr annualized` : "annual total";
+  const deltaRole = percentDelta(report.annualPay, comparison.roleMedian);
+  const deltaLocation = percentDelta(report.annualPay, comparison.locationMedian);
+
+  elements.drawerContent.innerHTML = `
+    <div class="drawer-heading">
+      <p class="eyebrow">Job insight</p>
+      <h2 id="drawerTitle">${escapeHtml(report.role)}</h2>
+      <div class="drawer-pay">
+        <strong>${formatMoney(report.annualPay)}</strong>
+        <span>${hourlyLabel}</span>
+      </div>
+      <div class="pill-row">
+        <span class="pill industry">${escapeHtml(report.industry)}</span>
+        <span class="pill">${escapeHtml(report.location)}</span>
+        <span class="pill">${escapeHtml(report.experience)}</span>
+        <span class="pill">${escapeHtml(report.gender || "Undisclosed")}</span>
+        <span class="pill">${escapeHtml(report.workStyle)}</span>
+        <span class="pill">${escapeHtml(report.companySize)}</span>
+      </div>
+    </div>
+
+    <div class="drawer-grid">
+      <div class="insight-tile">
+        <span>Percentile</span>
+        <strong>${comparison.percentile}th</strong>
+        <small>within ${comparison.peerCount} comparable reports</small>
+      </div>
+      <div class="insight-tile">
+        <span>Peer median</span>
+        <strong>${formatMoney(comparison.roleMedian)}</strong>
+        <small>${deltaRole >= 0 ? "+" : ""}${deltaRole}% vs peer median</small>
+      </div>
+      <div class="insight-tile">
+        <span>Local signal</span>
+        <strong>${formatMoney(comparison.locationMedian)}</strong>
+        <small>${deltaLocation >= 0 ? "+" : ""}${deltaLocation}% vs ${escapeHtml(cityOf(report.location))}</small>
+      </div>
+      <div class="insight-tile">
+        <span>Middle 50%</span>
+        <strong>${compactMoney(comparison.middleLow)}-${compactMoney(comparison.middleHigh)}</strong>
+        <small>top signal ${formatMoney(comparison.topSignal)}</small>
+      </div>
+    </div>
+
+    <section class="drawer-section">
+      <div class="mini-heading">
+        <h3>Pay equity curve</h3>
+        <span>percentiles by group</span>
+      </div>
+      ${renderCurveToggle(genderGroups, curveFilter)}
+      ${renderPayCurve(peers, curveFilter)}
+    </section>
+
+    <section class="drawer-section">
+      <div class="mini-heading">
+        <h3>Distribution by gender</h3>
+        <span>${compactMoney(Math.min(...values))}-${compactMoney(Math.max(...values))}</span>
+      </div>
+      <div class="equity-list">
+        ${renderGenderRows(peers)}
+      </div>
+    </section>
+
+    <section class="drawer-section">
+      <div class="mini-heading">
+        <h3>Negotiation and trust signals</h3>
+        <span>directional</span>
+      </div>
+      <ul class="signal-list">
+        ${insightFlags(report, comparison, peers).map((flag) => `<li>${escapeHtml(flag)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+
+  elements.reportDrawer.classList.add("is-open");
+  elements.reportDrawer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("has-drawer");
+}
+
+function closeReportDrawer() {
+  state.activeReportId = null;
+  state.curveFilter = "All";
+  elements.reportDrawer.classList.remove("is-open");
+  elements.reportDrawer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("has-drawer");
 }
 
 function escapeHtml(value) {
@@ -716,6 +988,24 @@ function render() {
   renderIndustryBreakdown(reports);
   renderActiveSummary(reports);
   renderFeed(reports);
+}
+
+async function renderAuthState() {
+  if (!elements.authLink) return;
+
+  try {
+    const response = await fetch("/api/session");
+    const session = await response.json();
+
+    if (session.user) {
+      elements.authLink.textContent = session.user.name.split(" ")[0] || "Account";
+      elements.authLink.href = "/auth/logout";
+      elements.authLink.title = "Log out";
+    }
+  } catch {
+    elements.authLink.textContent = "Log in";
+    elements.authLink.href = "/login.html";
+  }
 }
 
 function showToast(message) {
@@ -790,10 +1080,40 @@ function bindEvents() {
   });
 
   elements.feedList.addEventListener("click", (event) => {
+    const openButton = event.target.closest("[data-open-report]");
+    if (openButton) {
+      openReportDrawer(openButton.dataset.openReport);
+      return;
+    }
+
     const actionButton = event.target.closest("[data-action]");
-    if (!actionButton) return;
+    if (!actionButton) {
+      const card = event.target.closest("[data-report-id]");
+      if (card) {
+        openReportDrawer(card.dataset.reportId);
+      }
+      return;
+    }
 
     toggleReaction(actionButton.dataset.id, actionButton.dataset.action);
+  });
+
+  elements.reportDrawer.addEventListener("click", (event) => {
+    const curveButton = event.target.closest("[data-curve-filter]");
+    if (curveButton && state.activeReportId) {
+      openReportDrawer(state.activeReportId, curveButton.dataset.curveFilter);
+      return;
+    }
+
+    if (!event.target.closest("[data-close-drawer]")) return;
+
+    closeReportDrawer();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.reportDrawer.classList.contains("is-open")) {
+      closeReportDrawer();
+    }
   });
 
   elements.industryBreakdown.addEventListener("click", (event) => {
@@ -810,3 +1130,4 @@ populateSelects();
 updatePayTypeCopy();
 bindEvents();
 render();
+renderAuthState();

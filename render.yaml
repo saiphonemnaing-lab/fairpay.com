@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: fairpay
+    runtime: node
+    buildCommand: "true"
+    startCommand: node server.js

@@ -20,6 +20,7 @@
           <span><strong id="headerReportCount">0</strong> reports</span>
           <span><strong id="headerIndustryCount">0</strong> industries</span>
           <span><strong id="headerMedianPay">$0</strong> median</span>
+          <a class="login-link" id="authLink" href="/login.html">Log in</a>
         </div>
       </header>
 
@@ -76,7 +77,8 @@
               <select id="gender" name="gender" required>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Others">Others</option>
+                <option value="Nonbinary">Nonbinary</option>
+                <option value="Undisclosed">Prefer not to say</option>
               </select>
             </div>
 
@@ -191,10 +193,10 @@
 
           <div class="chart-block" aria-labelledby="distributionTitle">
             <div class="mini-heading">
-              <h3 id="distributionTitle">Distribution by gender</h3>
+              <h3 id="distributionTitle">Pay distribution</h3>
               <span id="distributionLabel">All reports</span>
             </div>
-            <div id="distributionChart" class="gender-distributions"></div>
+            <div id="distributionChart" class="distribution-chart"></div>
           </div>
 
           <div class="chart-block" aria-labelledby="industryTitle">
@@ -217,6 +219,13 @@
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="reportDrawer" class="report-drawer" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <button class="drawer-close" type="button" data-close-drawer aria-label="Close report insights">Close</button>
+        <div id="drawerContent"></div>
+      </section>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
