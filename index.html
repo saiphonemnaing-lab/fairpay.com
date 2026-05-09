@@ -7,6 +7,50 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="onboardingOverlay" class="onboarding-overlay" aria-live="polite">
+      <section id="authStep" class="onboarding-card" aria-labelledby="authTitle">
+        <p class="eyebrow">Welcome</p>
+        <h1 id="authTitle">Sign in to personalize FairPay</h1>
+        <p class="onboarding-copy">Choose how you want to enter. You can keep browsing as a guest and still get a curated feed.</p>
+        <div class="auth-options">
+          <button class="auth-choice google" type="button" data-auth-choice="google">Sign up with Google</button>
+          <button class="auth-choice email" type="button" data-auth-choice="email">Sign in with Email</button>
+          <button class="auth-choice guest" type="button" data-auth-choice="guest">Continue as Guest</button>
+        </div>
+      </section>
+
+      <section id="profileStep" class="onboarding-card profile-card" aria-labelledby="profileTitle" hidden>
+        <p class="eyebrow">Curate your feed</p>
+        <h1 id="profileTitle">Tell us what you want to see</h1>
+        <p class="onboarding-copy">Stories and Pay are ranked by role 10%, school/company/location 30%, and interest 60%.</p>
+        <form id="profileForm" class="profile-form">
+          <div class="field">
+            <label for="profileRole">Role</label>
+            <input id="profileRole" name="profileRole" type="text" placeholder="Product manager, nurse, intern" required />
+          </div>
+          <div class="field">
+            <label for="profileOrg">School or company</label>
+            <input id="profileOrg" name="profileOrg" type="text" placeholder="UCLA, Google, hospital network" required />
+          </div>
+          <div class="field">
+            <label for="profileLocation">Location</label>
+            <input id="profileLocation" name="profileLocation" type="text" placeholder="Seattle, WA" required />
+          </div>
+          <div class="field">
+            <label for="profileInterest">Interest</label>
+            <select id="profileInterest" name="profileInterest" required>
+              <option value="Negotiation">Negotiation</option>
+              <option value="Interview">Interview</option>
+              <option value="Road to internship">Road to internship</option>
+              <option value="Promotion">Promotion</option>
+              <option value="Career switch">Career switch</option>
+            </select>
+          </div>
+          <button class="primary-action" type="submit">Enter FairPay</button>
+        </form>
+      </section>
+    </div>
+
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#" aria-label="WageSignal home">
@@ -18,13 +62,44 @@
         </a>
         <div class="topbar-metrics" aria-label="Community metrics">
           <span><strong id="headerReportCount">0</strong> reports</span>
-          <span><strong id="headerIndustryCount">0</strong> industries</span>
+          <span><strong id="headerIndustryCount">0</strong> companies</span>
           <span><strong id="headerMedianPay">$0</strong> median</span>
+          <a class="login-link" id="authLink" href="/login.html">Log in</a>
         </div>
       </header>
 
-      <main class="workspace">
-        <section class="submit-panel tool-panel" aria-labelledby="submitTitle">
+      <nav class="main-tabs" aria-label="Primary pages">
+        <button class="main-tab is-active" type="button" data-page-target="storiesPage">Stories</button>
+        <button class="main-tab" type="button" data-page-target="payPage">Pay</button>
+      </nav>
+
+      <main id="storiesPage" class="page-view stories-page is-active">
+        <section class="stories-feed tool-panel" aria-labelledby="storiesTitle">
+          <div class="stories-header">
+            <div>
+              <p class="eyebrow">Community stories</p>
+              <h2 id="storiesTitle">Negotiation, interviews, and paths in</h2>
+            </div>
+            <button class="share-story-action" type="button" id="openStoryModal">+ Share Stories</button>
+            <label class="story-search" for="storySearch">
+              <span>Search stories</span>
+              <input id="storySearch" type="search" placeholder="Search title, role, company, topic" />
+            </label>
+            <div class="story-filters" aria-label="Story topic filters">
+              <button class="story-filter is-active" type="button" data-story-filter="All">All</button>
+              <button class="story-filter" type="button" data-story-filter="Negotiation">Negotiation</button>
+              <button class="story-filter" type="button" data-story-filter="Interview">Interviews</button>
+              <button class="story-filter" type="button" data-story-filter="Road to internship">Internships</button>
+            </div>
+          </div>
+
+          <div id="storiesList" class="stories-list"></div>
+        </section>
+      </main>
+
+      <main id="payPage" class="workspace page-view">
+        <section class="submit-panel tool-panel" id="paySubmitPanel" aria-labelledby="submitTitle" aria-hidden="true">
+          <button class="drawer-close pay-panel-close" type="button" id="closePayPanel" aria-label="Close pay form">Close</button>
           <div class="section-heading">
             <p class="eyebrow">Contribute</p>
             <h1 id="submitTitle">Share pay anonymously</h1>
@@ -32,31 +107,56 @@
 
           <form id="payForm" class="pay-form">
             <div class="field">
-              <label for="role">Role</label>
-              <input id="role" name="role" type="text" placeholder="Senior analyst" required />
-            </div>
-
-            <div class="field">
               <label for="industry">Industry</label>
               <select id="industry" name="industry" required></select>
             </div>
 
             <div class="field">
-              <label for="location">Location</label>
-              <input id="location" name="location" type="text" placeholder="Seattle, WA" required />
+              <label for="company">Company</label>
+              <select id="company" name="company" required></select>
             </div>
 
-            <div class="field two-col">
+            <div class="field conditional-field" id="newCompanyField" hidden>
+              <label for="newCompany">New company</label>
+              <input id="newCompany" name="newCompany" type="text" placeholder="Company name" maxlength="80" />
+            </div>
+
+            <div class="field">
+              <label for="role">Role</label>
+              <select id="role" name="role" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newRoleField" hidden>
+              <label for="newRole">New role</label>
+              <input id="newRole" name="newRole" type="text" placeholder="Senior analyst" maxlength="80" />
+            </div>
+
+            <div class="field">
+              <label for="location">Location</label>
+              <select id="location" name="location" required></select>
+            </div>
+
+            <div class="field conditional-field" id="newLocationField" hidden>
+              <label for="newLocation">New city</label>
+              <input id="newLocation" name="newLocation" type="text" placeholder="Seattle, WA" maxlength="80" />
+            </div>
+
+            <div class="field comp-field">
               <label for="payType">Pay type</label>
               <select id="payType" name="payType" required>
-                <option value="salary">Annual total</option>
-                <option value="hourly">Hourly rate</option>
+                <option value="salary">Annual base</option>
+                <option value="hourly">Hourly base</option>
               </select>
             </div>
 
-            <div class="field two-col">
-              <label for="payAmount" id="payAmountLabel">Annual total pay</label>
-              <input id="payAmount" name="payAmount" type="number" min="1" step="1000" placeholder="120000" required />
+            <div class="field comp-field">
+              <label for="payAmount" id="payAmountLabel">Base pay</label>
+              <input id="payAmount" name="payAmount" type="number" min="1" step="1" placeholder="120000" required />
+            </div>
+
+            <div class="field comp-field">
+              <label for="bonusAmount">Bonus</label>
+              <input id="bonusAmount" name="bonusAmount" type="number" min="0" step="1" placeholder="10000" value="0" required />
             </div>
 
             <div class="field">
@@ -76,7 +176,8 @@
               <select id="gender" name="gender" required>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Others">Others</option>
+                <option value="Nonbinary">Nonbinary</option>
+                <option value="Undisclosed">Prefer not to say</option>
               </select>
             </div>
 
@@ -106,13 +207,33 @@
               <textarea id="note" name="note" rows="4" maxlength="180" placeholder="Union shop, night shift differential, negotiated after competing offer"></textarea>
             </div>
 
+            <fieldset class="linkedin-panel">
+              <legend>LinkedIn verification</legend>
+
+              <div class="linkedin-intro">
+                <strong>Verify with LinkedIn</strong>
+                <span>Use LinkedIn login or paste a profile URL. Links can start with https:// or www.</span>
+              </div>
+
+              <button class="linkedin-action" type="button" id="linkedinLogin">Continue with LinkedIn</button>
+
+              <label for="linkedinUrl">
+                <span>Paste your LinkedIn URL</span>
+                <input id="linkedinUrl" name="linkedinUrl" type="text" placeholder="www.linkedin.com/in/your-profile" />
+              </label>
+              <button class="linkedin-secondary-action" type="button" id="linkedinVerify">Verify pasted URL</button>
+
+              <input id="linkedinVerified" name="linkedinVerified" type="hidden" value="false" />
+              <p id="linkedinStatus" class="linkedin-status" aria-live="polite">Choose one LinkedIn verification option before posting.</p>
+            </fieldset>
+
             <div class="privacy-strip" aria-label="Anonymity safeguards">
               <span>No names</span>
-              <span>No employer field</span>
-              <span>Rounded pay</span>
+              <span>Company grouped</span>
+              <span>LinkedIn verified</span>
             </div>
 
-            <button class="primary-action" type="submit">Post anonymous report</button>
+            <button class="primary-action" type="submit">Post verified anonymous report</button>
           </form>
         </section>
 
@@ -122,17 +243,25 @@
               <p class="eyebrow">Community feed</p>
               <h2 id="feedTitle">Recent salary reports</h2>
             </div>
+            <button class="share-story-action" id="openPayPanel" type="button">+ Share Pay</button>
             <button class="ghost-action" id="resetFilters" type="button">Reset</button>
+          </div>
+
+          <div class="story-filters pay-quick-filters" aria-label="Pay feed filters">
+            <button class="story-filter is-active" type="button" data-pay-filter="All">All</button>
+            <button class="story-filter" type="button" data-pay-filter="Verified">Verified</button>
+            <button class="story-filter" type="button" data-pay-filter="Remote">Remote</button>
+            <button class="story-filter" type="button" data-pay-filter="High">High pay</button>
           </div>
 
           <div class="filters" aria-label="Salary report filters">
             <label class="search-field" for="searchInput">
               <span>Search</span>
-              <input id="searchInput" type="search" placeholder="Role, city, industry, note" />
+              <input id="searchInput" type="search" placeholder="Role, company, city, note" />
             </label>
 
             <label for="industryFilter">
-              <span>Industry</span>
+              <span>Company</span>
               <select id="industryFilter"></select>
             </label>
 
@@ -164,7 +293,7 @@
           <div id="feedList" class="feed-list"></div>
         </section>
 
-        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle">
+        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle" hidden>
           <div class="section-heading">
             <p class="eyebrow">Benchmarks</p>
             <h2 id="insightsTitle">Live pay signal</h2>
@@ -191,15 +320,15 @@
 
           <div class="chart-block" aria-labelledby="distributionTitle">
             <div class="mini-heading">
-              <h3 id="distributionTitle">Distribution by gender</h3>
+              <h3 id="distributionTitle">Pay distribution</h3>
               <span id="distributionLabel">All reports</span>
             </div>
-            <div id="distributionChart" class="gender-distributions"></div>
+            <div id="distributionChart" class="distribution-chart"></div>
           </div>
 
           <div class="chart-block" aria-labelledby="industryTitle">
             <div class="mini-heading">
-              <h3 id="industryTitle">Industry medians</h3>
+              <h3 id="industryTitle">Company medians</h3>
               <span>annualized</span>
             </div>
             <div id="industryBreakdown" class="industry-breakdown"></div>
@@ -210,13 +339,68 @@
             <div class="score-ring" aria-label="Trust score 84 out of 100">
               <span>84</span>
             </div>
-            <p>Posts combine role, industry, location, level, work style, and rounded pay without collecting employer names.</p>
+            <p>Contributors verify through LinkedIn before posting, while public reports stay anonymous and employer names stay out.</p>
           </div>
         </aside>
       </main>
     </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="storyModal" class="story-modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close-story-modal></div>
+      <section class="story-modal-panel" role="dialog" aria-modal="true" aria-labelledby="storySubmitTitle">
+        <button class="drawer-close" type="button" data-close-story-modal aria-label="Close story form">Close</button>
+        <div class="section-heading">
+          <p class="eyebrow">Contribute</p>
+          <h1 id="storySubmitTitle">Share your story</h1>
+        </div>
+
+        <form id="storyForm" class="story-form">
+          <div class="field">
+            <label for="storyTitle">Title</label>
+            <input id="storyTitle" name="storyTitle" type="text" maxlength="82" placeholder="How I negotiated my first offer" required />
+          </div>
+          <div class="field">
+            <label for="storyCategory">Topic</label>
+            <select id="storyCategory" name="storyCategory" required>
+              <option value="Negotiation">Negotiation</option>
+              <option value="Interview">Interview</option>
+              <option value="Road to internship">Road to internship</option>
+              <option value="Promotion">Promotion</option>
+              <option value="Career switch">Career switch</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="storyRole">Role</label>
+            <input id="storyRole" name="storyRole" type="text" placeholder="Software engineering intern" required />
+          </div>
+          <div class="field">
+            <label for="storyCompany">School or company</label>
+            <input id="storyCompany" name="storyCompany" type="text" placeholder="Large tech company" required />
+          </div>
+          <div class="field">
+            <label for="storyPay">Pay</label>
+            <input id="storyPay" name="storyPay" type="text" placeholder="$48/hr + housing stipend" required />
+          </div>
+          <div class="field">
+            <label for="storyExperience">Years of experience</label>
+            <input id="storyExperience" name="storyExperience" type="text" placeholder="0 years, junior year" required />
+          </div>
+          <div class="field">
+            <label for="storyBody">Story</label>
+            <textarea id="storyBody" name="storyBody" rows="6" maxlength="900" placeholder="What happened, what worked, what you would do differently..." required></textarea>
+          </div>
+          <button class="primary-action" type="submit">Post story</button>
+        </form>
+      </section>
+    </div>
+    <div id="reportDrawer" class="report-drawer" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <button class="drawer-close" type="button" data-close-drawer aria-label="Close report insights">Close</button>
+        <div id="drawerContent"></div>
+      </section>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
