@@ -1,5 +1,7 @@
 const STORAGE_KEY = "wagesignal.userReports";
 const REACTION_KEY = "wagesignal.reactions";
+const STORY_KEY = "wagesignal.userStories";
+const PROFILE_KEY = "wagesignal.profile";
 
 const industries = [
   "Technology",
@@ -294,14 +296,67 @@ const sampleReports = [
   }
 ];
 
+const sampleStories = [
+  {
+    id: "story-1",
+    title: "The counteroffer script that moved my base by 18 percent",
+    author: "Anonymous product designer",
+    category: "Negotiation",
+    role: "Senior product designer",
+    company: "Late-stage SaaS company",
+    pay: "$184k total compensation",
+    experience: "7 years",
+    body: "I waited until the recruiter confirmed the team wanted me, then asked if the band had room to reflect the scope of the role. I shared two competing ranges, paused, and let them come back with a revised base instead of negotiating against myself.",
+    createdAt: "2026-05-08T15:30:00.000Z",
+    upvotes: 38,
+    downvotes: 2,
+    source: "sample"
+  },
+  {
+    id: "story-2",
+    title: "Road to my first healthcare analytics internship",
+    author: "Anonymous analyst intern",
+    category: "Road to internship",
+    role: "Healthcare data intern",
+    company: "Regional hospital network",
+    pay: "$31/hr",
+    experience: "0 years",
+    body: "The biggest unlock was building one small dashboard with public hospital data and walking through it during the interview. I did not have prior industry experience, but I could explain the data quality issues and what I would validate before sending it to a manager.",
+    createdAt: "2026-05-04T12:00:00.000Z",
+    upvotes: 27,
+    downvotes: 1,
+    source: "sample"
+  },
+  {
+    id: "story-3",
+    title: "What the panel interview actually tested",
+    author: "Anonymous operations lead",
+    category: "Interview",
+    role: "Warehouse operations lead",
+    company: "National logistics company",
+    pay: "$63k base + bonus",
+    experience: "5 years",
+    body: "The panel cared less about polished answers and more about how I handled a messy shift handoff. I used a real example with missing inventory, named the tradeoffs, and explained how I communicated the risk without blaming the previous team.",
+    createdAt: "2026-04-29T09:10:00.000Z",
+    upvotes: 19,
+    downvotes: 0,
+    source: "sample"
+  }
+];
+
 const state = {
   search: "",
   industry: "All",
   experience: "All",
   activeReportId: null,
+  activePage: "storiesPage",
+  storyFilter: "All",
+  storySearch: "",
   curveFilter: "All",
   sort: "newest",
+  profile: loadProfile(),
   userReports: [],
+  userStories: loadUserStories(),
   companies: [...defaultCompanies],
   roles: [...defaultRoles],
   locations: [],
@@ -309,6 +364,20 @@ const state = {
 };
 
 const elements = {
+  onboardingOverlay: document.querySelector("#onboardingOverlay"),
+  authStep: document.querySelector("#authStep"),
+  profileStep: document.querySelector("#profileStep"),
+  authChoices: document.querySelectorAll("[data-auth-choice]"),
+  profileForm: document.querySelector("#profileForm"),
+  pageTabs: document.querySelectorAll("[data-page-target]"),
+  pageViews: document.querySelectorAll(".page-view"),
+  storyForm: document.querySelector("#storyForm"),
+  storyModal: document.querySelector("#storyModal"),
+  openStoryModal: document.querySelector("#openStoryModal"),
+  closeStoryModal: document.querySelectorAll("[data-close-story-modal]"),
+  storyFilters: document.querySelectorAll("[data-story-filter]"),
+  storySearch: document.querySelector("#storySearch"),
+  storiesList: document.querySelector("#storiesList"),
   form: document.querySelector("#payForm"),
   role: document.querySelector("#role"),
   newRole: document.querySelector("#newRole"),
@@ -329,6 +398,7 @@ const elements = {
   workStyle: document.querySelector("#workStyle"),
   companySize: document.querySelector("#companySize"),
   linkedinUrl: document.querySelector("#linkedinUrl"),
+  linkedinLogin: document.querySelector("#linkedinLogin"),
   linkedinVerify: document.querySelector("#linkedinVerify"),
   linkedinVerified: document.querySelector("#linkedinVerified"),
   linkedinStatus: document.querySelector("#linkedinStatus"),
@@ -415,6 +485,30 @@ async function saveUserReport(report) {
   return payload.report;
 }
 
+function loadUserStories() {
+  try {
+    return JSON.parse(localStorage.getItem(STORY_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUserStories() {
+  localStorage.setItem(STORY_KEY, JSON.stringify(state.userStories));
+}
+
+function loadProfile() {
+  try {
+    return JSON.parse(localStorage.getItem(PROFILE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function saveProfile(profile) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
+
 function loadReactions() {
   try {
     return JSON.parse(localStorage.getItem(REACTION_KEY)) || {};
@@ -439,6 +533,21 @@ function mergeOptionsFromReports(reports) {
   state.companies = uniqueSorted([...state.companies, ...sampleReports.map((report) => report.company), ...reports.map((report) => report.company)]);
   state.roles = uniqueSorted([...state.roles, ...sampleReports.map((report) => report.role), ...reports.map((report) => report.role)]);
   state.locations = uniqueSorted([...state.locations, ...sampleReports.map((report) => report.location), ...reports.map((report) => report.location)]);
+}
+
+function allStories() {
+  return [...state.userStories, ...sampleStories];
+}
+
+function normalizeText(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
+function containsMatch(source, target) {
+  const sourceText = normalizeText(source);
+  const targetText = normalizeText(target);
+
+  return Boolean(sourceText && targetText && (sourceText.includes(targetText) || targetText.includes(sourceText)));
 }
 
 function formatMoney(value) {
@@ -542,6 +651,7 @@ function filteredReports() {
     if (state.sort === "highest") return b.annualPay - a.annualPay;
     if (state.sort === "lowest") return a.annualPay - b.annualPay;
     if (state.sort === "helpful") return reactionCount(b, "helpful") - reactionCount(a, "helpful");
+    if (state.profile) return payRelevanceScore(b) - payRelevanceScore(a);
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 }
@@ -698,6 +808,24 @@ function createReport(formData) {
   };
 }
 
+function createStory(formData) {
+  return {
+    id: `user-story-${makeId()}`,
+    title: cleanText(formData.get("storyTitle"), 82),
+    author: "Anonymous contributor",
+    category: formData.get("storyCategory"),
+    role: cleanText(formData.get("storyRole")),
+    company: cleanText(formData.get("storyCompany")),
+    pay: cleanText(formData.get("storyPay")),
+    experience: cleanText(formData.get("storyExperience")),
+    body: cleanText(formData.get("storyBody"), 900),
+    createdAt: new Date().toISOString(),
+    upvotes: 0,
+    downvotes: 0,
+    source: "user"
+  };
+}
+
 function makeId() {
   if (window.crypto?.randomUUID) {
     return window.crypto.randomUUID();
@@ -706,11 +834,11 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function cleanText(value) {
+function cleanText(value, maxLength = 180) {
   return String(value || "")
     .trim()
     .replace(/\s+/g, " ")
-    .slice(0, 180);
+    .slice(0, maxLength);
 }
 
 function renderHeader(reports) {
@@ -889,6 +1017,138 @@ function renderFeed(reports) {
       `;
     })
     .join("");
+}
+
+function filteredStories() {
+  const stories = allStories();
+
+  if (state.storyFilter === "All") {
+    return stories;
+  }
+
+  return stories.filter((story) => story.category === state.storyFilter);
+}
+
+function storyVoteCount(story, type) {
+  return (story[type] || 0) + reactionFor(story.id, type);
+}
+
+function storyMatchesSearch(story) {
+  if (!state.storySearch) return true;
+
+  const haystack = [story.title, story.author, story.category, story.role, story.company, story.pay, story.experience, story.body]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(state.storySearch.toLowerCase());
+}
+
+function storyRelevanceScore(story) {
+  if (!state.profile) return 0;
+
+  const roleScore = containsMatch(story.role, state.profile.role) ? 10 : 0;
+  const orgLocationScore =
+    containsMatch(story.company, state.profile.org) || containsMatch(story.company, state.profile.location) ? 30 : 0;
+  const interestScore = story.category === state.profile.interest || containsMatch(story.body, state.profile.interest) ? 60 : 0;
+
+  return roleScore + orgLocationScore + interestScore;
+}
+
+function payRelevanceScore(report) {
+  if (!state.profile) return 0;
+
+  const roleScore = containsMatch(report.role, state.profile.role) ? 10 : 0;
+  const orgLocationScore = containsMatch(report.location, state.profile.location) ? 30 : 0;
+  const interestScore =
+    containsMatch(report.note, state.profile.interest) || containsMatch(report.industry, state.profile.interest) ? 60 : 0;
+
+  return roleScore + orgLocationScore + interestScore;
+}
+
+function renderStories() {
+  const stories = filteredStories()
+    .filter(storyMatchesSearch)
+    .sort((a, b) => {
+      const scoreDelta = storyRelevanceScore(b) - storyRelevanceScore(a);
+      if (scoreDelta) return scoreDelta;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  if (!stories.length) {
+    elements.storiesList.innerHTML = '<div class="empty-state">No stories in this topic yet.</div>';
+    return;
+  }
+
+  elements.storiesList.innerHTML = stories
+    .map((story) => {
+      const activeUp = reactionFor(story.id, "upvotes") ? "is-active" : "";
+      const activeDown = reactionFor(story.id, "downvotes") ? "is-active" : "";
+
+      return `
+        <article class="story-card ${story.source === "user" ? "is-user" : ""}" data-story-id="${story.id}">
+          <div class="story-card-head">
+            <span class="story-topic">${escapeHtml(story.category)}</span>
+            <span>${storyRelevanceScore(story)} match · ${formatDate(story.createdAt)}</span>
+          </div>
+          <h3>${escapeHtml(story.title)}</h3>
+          <div class="story-meta">
+            <span>${escapeHtml(story.author)}</span>
+            <span>${escapeHtml(story.role)}</span>
+            <span>${escapeHtml(story.company)}</span>
+            <span>${escapeHtml(story.pay)}</span>
+            <span>${escapeHtml(story.experience)}</span>
+          </div>
+          <p>${escapeHtml(story.body)}</p>
+          <div class="story-actions">
+            <button class="story-vote ${activeUp}" type="button" data-story-action="upvotes" data-story-id="${story.id}" aria-label="Upvote story">
+              △ ${storyVoteCount(story, "upvotes")}
+            </button>
+            <button class="story-vote ${activeDown}" type="button" data-story-action="downvotes" data-story-id="${story.id}" aria-label="Downvote story">
+              ▽ ${storyVoteCount(story, "downvotes")}
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function switchPage(pageId) {
+  state.activePage = pageId;
+
+  elements.pageViews.forEach((page) => {
+    page.classList.toggle("is-active", page.id === pageId);
+  });
+
+  elements.pageTabs.forEach((tab) => {
+    const isActive = tab.dataset.pageTarget === pageId;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+}
+
+function showProfileStep() {
+  elements.authStep.hidden = true;
+  elements.profileStep.hidden = false;
+}
+
+function completeOnboarding(profile) {
+  state.profile = profile;
+  saveProfile(profile);
+  elements.onboardingOverlay.classList.add("is-hidden");
+  render();
+}
+
+function openStoryModal() {
+  elements.storyModal.classList.add("is-open");
+  elements.storyModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("has-drawer");
+}
+
+function closeStoryModal() {
+  elements.storyModal.classList.remove("is-open");
+  elements.storyModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("has-drawer");
 }
 
 function findReport(reportId) {
@@ -1226,6 +1486,7 @@ function render() {
   const reports = filteredReports();
   const all = allReports();
 
+  renderStories();
   renderHeader(all);
   renderStats(reports);
   renderDistribution(reports);
@@ -1272,10 +1533,79 @@ function toggleReaction(reportId, type) {
 }
 
 function bindEvents() {
+  elements.authChoices.forEach((choice) => {
+    choice.addEventListener("click", () => {
+      showProfileStep();
+      showToast(`${choice.textContent} selected.`);
+    });
+  });
+
+  elements.profileForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(elements.profileForm);
+    completeOnboarding({
+      role: cleanText(formData.get("profileRole")),
+      org: cleanText(formData.get("profileOrg")),
+      location: cleanText(formData.get("profileLocation")),
+      interest: formData.get("profileInterest")
+    });
+    showToast("Your feed is curated.");
+  });
+
+  elements.pageTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      switchPage(tab.dataset.pageTarget);
+    });
+  });
+
+  elements.storyForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const story = createStory(new FormData(elements.storyForm));
+
+    state.userStories.unshift(story);
+    saveUserStories();
+    elements.storyForm.reset();
+    closeStoryModal();
+    state.storyFilter = "All";
+    elements.storyFilters.forEach((filter) => {
+      filter.classList.toggle("is-active", filter.dataset.storyFilter === "All");
+    });
+    render();
+    showToast("Story posted anonymously on this device.");
+  });
+
+  elements.storyFilters.forEach((filter) => {
+    filter.addEventListener("click", () => {
+      state.storyFilter = filter.dataset.storyFilter;
+      elements.storyFilters.forEach((button) => {
+        button.classList.toggle("is-active", button === filter);
+      });
+      renderStories();
+    });
+  });
+
+  elements.openStoryModal.addEventListener("click", openStoryModal);
+
+  elements.closeStoryModal.forEach((closeTarget) => {
+    closeTarget.addEventListener("click", closeStoryModal);
+  });
+
+  elements.storySearch.addEventListener("input", (event) => {
+    state.storySearch = event.target.value.trim();
+    renderStories();
+  });
+
+  elements.storiesList.addEventListener("click", (event) => {
+    const voteButton = event.target.closest("[data-story-action]");
+    if (!voteButton) return;
+
+    toggleReaction(voteButton.dataset.storyId, voteButton.dataset.storyAction);
+  });
+
   elements.form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (elements.linkedinVerified.value !== "true") {
-      showToast("Verify with LinkedIn before posting.");
+      showToast("Choose a LinkedIn verification option before posting.");
       elements.linkedinUrl.focus();
       return;
     }
@@ -1319,6 +1649,14 @@ function bindEvents() {
   });
   elements.role.addEventListener("change", updateEntityFields);
   elements.location.addEventListener("change", updateEntityFields);
+
+  elements.linkedinLogin.addEventListener("click", () => {
+    window.open("https://www.linkedin.com/login", "_blank", "noopener,noreferrer");
+    elements.linkedinVerified.value = "true";
+    elements.linkedinStatus.textContent = "LinkedIn login started. Prototype verification is connected.";
+    elements.linkedinStatus.classList.add("is-verified");
+    showToast("LinkedIn login verification connected for this contribution.");
+  });
 
   elements.linkedinVerify.addEventListener("click", () => {
     if (!isLinkedInUrl(elements.linkedinUrl.value)) {
@@ -1401,6 +1739,11 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.storyModal.classList.contains("is-open")) {
+      closeStoryModal();
+      return;
+    }
+
     if (event.key === "Escape" && elements.reportDrawer.classList.contains("is-open")) {
       closeReportDrawer();
     }
@@ -1418,7 +1761,9 @@ function bindEvents() {
 
 function isLinkedInUrl(value) {
   try {
-    const url = new URL(value);
+    const rawValue = String(value || "").trim();
+    const candidate = rawValue.startsWith("www.") ? `https://${rawValue}` : rawValue;
+    const url = new URL(candidate);
     return url.protocol === "https:" && url.hostname.toLowerCase().endsWith("linkedin.com");
   } catch {
     return false;
@@ -1427,13 +1772,17 @@ function isLinkedInUrl(value) {
 
 function resetLinkedInVerification() {
   elements.linkedinVerified.value = "false";
-  elements.linkedinStatus.textContent = "LinkedIn verification required before posting.";
+  elements.linkedinStatus.textContent = "Choose one LinkedIn verification option before posting.";
   elements.linkedinStatus.classList.remove("is-verified");
 }
 
 populateSelects();
 updatePayTypeCopy();
 bindEvents();
+switchPage(state.activePage);
+if (state.profile) {
+  elements.onboardingOverlay.classList.add("is-hidden");
+}
 render();
 renderAuthState();
 Promise.all([loadServerOptions(), loadServerReports()]).then(() => {
