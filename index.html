@@ -98,8 +98,7 @@
       </main>
 
       <main id="payPage" class="workspace page-view">
-        <section class="submit-panel tool-panel" id="paySubmitPanel" aria-labelledby="submitTitle" aria-hidden="true">
-          <button class="drawer-close pay-panel-close" type="button" id="closePayPanel" aria-label="Close pay form">Close</button>
+        <section class="submit-panel tool-panel" aria-labelledby="submitTitle">
           <div class="section-heading">
             <p class="eyebrow">Contribute</p>
             <h1 id="submitTitle">Share pay anonymously</h1>
@@ -217,21 +216,27 @@
 
               <button class="linkedin-action" type="button" id="linkedinLogin">Continue with LinkedIn</button>
 
+              <div class="or-divider"><span>OR</span></div>
+
               <label for="linkedinUrl">
                 <span>Paste your LinkedIn URL</span>
                 <input id="linkedinUrl" name="linkedinUrl" type="text" placeholder="www.linkedin.com/in/your-profile" />
               </label>
               <button class="linkedin-secondary-action" type="button" id="linkedinVerify">Verify pasted URL</button>
 
-              <input id="linkedinVerified" name="linkedinVerified" type="hidden" value="false" />
-              <p id="linkedinStatus" class="linkedin-status" aria-live="polite">Choose one LinkedIn verification option before posting.</p>
+            <input id="linkedinVerified" name="linkedinVerified" type="hidden" value="false" />
             </fieldset>
 
-            <div class="privacy-strip" aria-label="Anonymity safeguards">
-              <span>No names</span>
-              <span>Company grouped</span>
-              <span>LinkedIn verified</span>
+            <div class="feed-heading">
+              <div>
+                <p class="eyebrow">Community feed</p>
+                <h2 id="feedTitle">Recent salary reports</h2>
             </div>
+            <div class="feed-actions">
+              <button class="share-story-action" id="openPayPanel" type="button">+ Share Pay</button>
+              <button class="ghost-action" id="resetFilters" type="button">Reset</button>
+            </div>
+          </div>
 
             <button class="primary-action" type="submit">Post verified anonymous report</button>
           </form>
@@ -243,15 +248,7 @@
               <p class="eyebrow">Community feed</p>
               <h2 id="feedTitle">Recent salary reports</h2>
             </div>
-            <button class="share-story-action" id="openPayPanel" type="button">+ Share Pay</button>
             <button class="ghost-action" id="resetFilters" type="button">Reset</button>
-          </div>
-
-          <div class="story-filters pay-quick-filters" aria-label="Pay feed filters">
-            <button class="story-filter is-active" type="button" data-pay-filter="All">All</button>
-            <button class="story-filter" type="button" data-pay-filter="Verified">Verified</button>
-            <button class="story-filter" type="button" data-pay-filter="Remote">Remote</button>
-            <button class="story-filter" type="button" data-pay-filter="High">High pay</button>
           </div>
 
           <div class="filters" aria-label="Salary report filters">
@@ -293,7 +290,7 @@
           <div id="feedList" class="feed-list"></div>
         </section>
 
-        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle" hidden>
+        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle">
           <div class="section-heading">
             <p class="eyebrow">Benchmarks</p>
             <h2 id="insightsTitle">Live pay signal</h2>
