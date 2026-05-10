@@ -3,6 +3,31 @@ const http = require("http");
 const crypto = require("crypto");
 const path = require("path");
 
+// --- Minimal .env loader (no dependency). Only sets vars that aren't already set. ---
+(function loadDotEnv() {
+  const envPath = path.join(__dirname, ".env");
+  if (!fs.existsSync(envPath)) return;
+  try {
+    const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq === -1) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if (key && !(key in process.env)) {
+        process.env[key] = value;
+      }
+    }
+  } catch (err) {
+    console.warn(".env load failed:", err.message);
+  }
+})();
+
 const port = process.env.PORT || 3000;
 const rootDir = __dirname;
 const sessionCookie = "wagesignal_session";
@@ -13,6 +38,10 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
 const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || "";
 const dataDir = path.resolve(process.env.WAGESIGNAL_DATA_DIR || path.join(rootDir, "data"));
 const reportsPath = path.join(dataDir, "reports.json");
+const storiesPath = path.join(dataDir, "stories.json");
+const jobsPath = path.join(dataDir, "job-listings.json");
+const seedJobsPath = path.join(rootDir, "seed", "official-job-listings.json");
+const seedJobSourcesPath = path.join(rootDir, "seed", "official-career-sources.json");
 const defaultCompanies = [
   "Acme Tech",
   "Austin Table Group",
@@ -69,6 +98,15 @@ function ensureDataStore() {
   if (!fs.existsSync(reportsPath)) {
     fs.writeFileSync(reportsPath, "[]", "utf8");
   }
+
+  if (!fs.existsSync(storiesPath)) {
+    fs.writeFileSync(storiesPath, "[]", "utf8");
+  }
+
+  if (!fs.existsSync(jobsPath)) {
+    const seedJobs = fs.existsSync(seedJobsPath) ? fs.readFileSync(seedJobsPath, "utf8") : "[]";
+    fs.writeFileSync(jobsPath, seedJobs, "utf8");
+  }
 }
 
 function readReports() {
@@ -85,6 +123,43 @@ function readReports() {
 function writeReports(reports) {
   ensureDataStore();
   fs.writeFileSync(reportsPath, JSON.stringify(reports, null, 2), "utf8");
+}
+
+function readStories() {
+  ensureDataStore();
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(storiesPath, "utf8"));
+    return Array.isArray(parsed) ? parsed.filter(isUsableStoredStory) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStories(stories) {
+  ensureDataStore();
+  fs.writeFileSync(storiesPath, JSON.stringify(stories, null, 2), "utf8");
+}
+
+function readJobs() {
+  ensureDataStore();
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(jobsPath, "utf8"));
+    return Array.isArray(parsed) ? parsed.filter((job) => job && job.company && job.role && job.industry) : [];
+  } catch {
+    return [];
+  }
+}
+
+function readJobSources() {
+  try {
+    if (!fs.existsSync(seedJobSourcesPath)) return [];
+    const parsed = JSON.parse(fs.readFileSync(seedJobSourcesPath, "utf8"));
+    return Array.isArray(parsed) ? parsed.filter((source) => source && source.company && source.industry && source.url) : [];
+  } catch {
+    return [];
+  }
 }
 
 function readRequestBody(req) {
@@ -146,6 +221,20 @@ function isUsableStoredReport(report) {
   );
 }
 
+function isUsableStoredStory(story) {
+  return Boolean(
+    story &&
+      story.id &&
+      story.title &&
+      story.body &&
+      story.company &&
+      story.role &&
+      !isJunkText(story.title) &&
+      !isJunkText(story.company) &&
+      !isJunkText(story.role)
+  );
+}
+
 function reportFingerprint(report) {
   return [
     normalizedKey(report.linkedinUrl),
@@ -158,12 +247,27 @@ function reportFingerprint(report) {
   ].join("|");
 }
 
+function storyFingerprint(story) {
+  return [
+    normalizedKey(story.title),
+    normalizedKey(story.company),
+    normalizedKey(story.role),
+    normalizedKey(story.body)
+  ].join("|");
+}
+
 function reportOptions() {
   const reports = readReports();
+  const jobs = readJobs();
+  const jobSources = readJobSources();
+
   return {
-    companies: uniqueSorted([...defaultCompanies, ...reports.map((report) => report.company)]),
-    roles: uniqueSorted([...defaultRoles, ...reports.map((report) => report.role)]),
-    locations: uniqueSorted(reports.map((report) => report.location))
+    industries: uniqueSorted([...reports.map((report) => report.industry), ...jobs.map((job) => job.industry), ...jobSources.map((source) => source.industry)]),
+    companies: uniqueSorted([...defaultCompanies, ...reports.map((report) => report.company), ...jobs.map((job) => job.company), ...jobSources.map((source) => source.company)]),
+    roles: uniqueSorted([...defaultRoles, ...reports.map((report) => report.role), ...jobs.map((job) => job.role)]),
+    locations: uniqueSorted([...reports.map((report) => report.location), ...jobs.map((job) => job.location)]),
+    jobs,
+    jobSources
   };
 }
 
@@ -206,6 +310,25 @@ function createStoredReport(payload) {
     createdAt: new Date().toISOString(),
     helpful: 0,
     similar: 0,
+    source: "server"
+  };
+}
+
+function createStoredStory(payload) {
+  return {
+    id: `story-${crypto.randomUUID()}`,
+    title: cleanText(payload.title || payload.storyTitle, 82),
+    author: "Anonymous contributor",
+    category: oneOf(payload.category || payload.storyCategory, ["Negotiation", "Interview", "Internship", "Other"], "Other"),
+    industry: cleanText(payload.industry || payload.storyIndustry, 50),
+    role: cleanText(payload.role || payload.storyRole, 80),
+    company: cleanText(payload.company || payload.storyCompany, 80),
+    pay: cleanText(payload.pay || payload.storyPay, 80),
+    experience: cleanText(payload.experience || payload.storyExperience, 80),
+    body: cleanText(payload.body || payload.storyBody, 900),
+    createdAt: new Date().toISOString(),
+    upvotes: 0,
+    downvotes: 0,
     source: "server"
   };
 }
@@ -256,14 +379,55 @@ function validateReport(report) {
   return errors;
 }
 
+function validateStory(story) {
+  const errors = [];
+  const stories = readStories();
+
+  if (!story.title || story.title.length < 8 || isJunkText(story.title)) {
+    errors.push("Story title needs a little more detail.");
+  }
+  if (!story.body || story.body.length < 30 || isJunkText(story.body)) {
+    errors.push("Story body needs at least 30 useful characters.");
+  }
+  if (!story.company || isJunkText(story.company)) {
+    errors.push("Company is required.");
+  }
+  if (!story.role || isJunkText(story.role)) {
+    errors.push("Role is required.");
+  }
+  if (!story.pay || story.pay.length < 2) {
+    errors.push("Pay context is required.");
+  }
+  if (stories.find((candidate) => storyFingerprint(candidate) === storyFingerprint(story))) {
+    errors.push("This exact story was already posted.");
+  }
+
+  return errors;
+}
+
 async function handleReportRoutes(req, res, url) {
   if (url.pathname === "/api/options" && req.method === "GET") {
     sendJson(res, 200, reportOptions());
     return true;
   }
 
+  if (url.pathname === "/api/jobs" && req.method === "GET") {
+    sendJson(res, 200, { jobs: readJobs() });
+    return true;
+  }
+
+  if (url.pathname === "/api/job-sources" && req.method === "GET") {
+    sendJson(res, 200, { sources: readJobSources() });
+    return true;
+  }
+
   if (url.pathname === "/api/reports" && req.method === "GET") {
     sendJson(res, 200, { reports: readReports() });
+    return true;
+  }
+
+  if (url.pathname === "/api/stories" && req.method === "GET") {
+    sendJson(res, 200, { stories: readStories() });
     return true;
   }
 
@@ -285,6 +449,29 @@ async function handleReportRoutes(req, res, url) {
       sendJson(res, 201, { report });
     } catch {
       sendJson(res, 400, { errors: ["Report payload must be valid JSON."] });
+    }
+
+    return true;
+  }
+
+  if (url.pathname === "/api/stories" && req.method === "POST") {
+    try {
+      const body = await readRequestBody(req);
+      const payload = JSON.parse(body || "{}");
+      const story = createStoredStory(payload);
+      const errors = validateStory(story);
+
+      if (errors.length) {
+        sendJson(res, 400, { errors });
+        return true;
+      }
+
+      const stories = readStories();
+      stories.unshift(story);
+      writeStories(stories.slice(0, 500));
+      sendJson(res, 201, { story });
+    } catch {
+      sendJson(res, 400, { errors: ["Story payload must be valid JSON."] });
     }
 
     return true;

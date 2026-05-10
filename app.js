@@ -497,6 +497,10 @@ async function saveUserReport(report) {
     throw new Error((payload.errors || ["Could not save report."]).join(" "));
   }
 
+  if (!payload.report || !payload.report.company || !payload.report.role) {
+    throw new Error("Pay API did not return a saved report. Deploy the latest server.js too.");
+  }
+
   state.userReports.unshift(payload.report);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.userReports));
   return payload.report;
@@ -529,6 +533,10 @@ async function saveUserStory(story) {
 
   if (!response.ok) {
     throw new Error((payload.errors || ["Could not save story."]).join(" "));
+  }
+
+  if (!payload.story || !payload.story.company || !payload.story.role) {
+    throw new Error("Story API did not return a saved story. Deploy the latest server.js too.");
   }
 
   state.userStories.unshift(payload.story);
@@ -1820,8 +1828,9 @@ function bindEvents() {
 
     try {
       const savedStory = await saveUserStory(story);
-      if (savedStory.company && !state.companies.includes(savedStory.company)) state.companies.push(savedStory.company);
-      if (savedStory.role && !state.roles.includes(savedStory.role)) state.roles.push(savedStory.role);
+      if (!savedStory) throw new Error("Story was not saved. Deploy the latest server.js too.");
+      if (savedStory?.company && !state.companies.includes(savedStory.company)) state.companies.push(savedStory.company);
+      if (savedStory?.role && !state.roles.includes(savedStory.role)) state.roles.push(savedStory.role);
       state.companies = uniqueSorted(state.companies);
       state.roles = uniqueSorted(state.roles);
       elements.storyForm.reset();
