@@ -351,11 +351,15 @@ const state = {
   activeReportId: null,
   activePage: "storiesPage",
   storyFilter: "All",
+  payFilter: "All",
   storySearch: "",
   curveFilter: "All",
   sort: "newest",
   profile: loadProfile(),
+  user: null,
   userReports: [],
+  jobListings: [],
+  jobSources: [],
   userStories: loadUserStories(),
   companies: [...defaultCompanies],
   roles: [...defaultRoles],
@@ -386,6 +390,10 @@ const elements = {
   storyNewRole: document.querySelector("#storyNewRole"),
   storyNewRoleField: document.querySelector("#storyNewRoleField"),
   form: document.querySelector("#payForm"),
+  paySubmitPanel: document.querySelector("#paySubmitPanel"),
+  openPayPanel: document.querySelector("#openPayPanel"),
+  closePayPanel: document.querySelector("#closePayPanel"),
+  payFilters: document.querySelectorAll("[data-pay-filter]"),
   role: document.querySelector("#role"),
   newRole: document.querySelector("#newRole"),
   newRoleField: document.querySelector("#newRoleField"),
@@ -464,6 +472,8 @@ async function loadServerOptions() {
     if (!response.ok) throw new Error("Could not load options");
 
     const payload = await response.json();
+    state.jobListings = Array.isArray(payload.jobs) ? payload.jobs : [];
+    state.jobSources = Array.isArray(payload.jobSources) ? payload.jobSources : [];
     state.companies = uniqueSorted([...(payload.companies || []), ...state.companies]);
     state.roles = uniqueSorted([...(payload.roles || []), ...state.roles]);
     state.locations = uniqueSorted([...(payload.locations || []), ...state.locations]);
@@ -490,6 +500,40 @@ async function saveUserReport(report) {
   state.userReports.unshift(payload.report);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.userReports));
   return payload.report;
+}
+
+async function loadServerStories() {
+  try {
+    const response = await fetch("/api/stories");
+    if (!response.ok) throw new Error("Could not load stories");
+
+    const payload = await response.json();
+    state.userStories = Array.isArray(payload.stories) ? payload.stories : [];
+    saveUserStories();
+  } catch {
+    state.userStories = loadUserStories();
+    showToast("Using stories saved on this browser until the server is reachable.");
+  }
+}
+
+async function saveUserStory(story) {
+  const response = await fetch("/api/stories", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(story)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error((payload.errors || ["Could not save story."]).join(" "));
+  }
+
+  state.userStories.unshift(payload.story);
+  saveUserStories();
+  return payload.story;
 }
 
 function loadUserStories() {
@@ -647,7 +691,14 @@ function matchesSearch(report) {
 
 function filteredReports() {
   const filtered = allReports().filter((report) => {
+    const payFilterMatch =
+      state.payFilter === "All" ||
+      (state.payFilter === "Verified" && report.verified) ||
+      (state.payFilter === "Remote" && report.workStyle === "Remote") ||
+      (state.payFilter === "High" && report.annualPay >= percentile(allReports().map((item) => item.annualPay), 75));
+
     return (
+      payFilterMatch &&
       matchesSearch(report) &&
       (state.industry === "All" || report.company === state.industry) &&
       (state.experience === "All" || report.experience === state.experience)
@@ -660,6 +711,32 @@ function filteredReports() {
     if (state.sort === "helpful") return reactionCount(b, "helpful") - reactionCount(a, "helpful");
     if (state.profile) return payRelevanceScore(b) - payRelevanceScore(a);
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+function matchesJobSearch(job) {
+  if (!state.search) return true;
+
+  const haystack = [
+    job.title,
+    job.role,
+    job.company,
+    job.industry,
+    job.location,
+    job.sourceStatus
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(state.search.toLowerCase());
+}
+
+function filteredJobListings() {
+  return state.jobListings.filter((job) => {
+    return (
+      matchesJobSearch(job) &&
+      (state.industry === "All" || job.company === state.industry)
+    );
   });
 }
 
@@ -720,9 +797,9 @@ function companiesForIndustry(industry) {
     return state.companies;
   }
 
-  const companies = allReports()
-    .filter((report) => report.industry === industry)
-    .map((report) => report.company);
+  const companies = [...allReports(), ...state.jobListings, ...state.jobSources]
+    .filter((item) => item.industry === industry)
+    .map((item) => item.company);
 
   return uniqueSorted(companies.length ? companies : state.companies);
 }
@@ -732,7 +809,7 @@ function rolesForCompany(company) {
     return state.roles;
   }
 
-  const companyRoles = allReports()
+  const companyRoles = [...allReports(), ...state.jobListings]
     .filter((report) => report.company === company)
     .map((report) => report.role);
 
@@ -740,7 +817,7 @@ function rolesForCompany(company) {
 }
 
 function inferIndustry(company, role) {
-  const reports = allReports();
+  const reports = [...allReports(), ...state.jobListings];
   const exact = reports.find((report) => report.company === company && report.role === role);
   if (exact?.industry) return exact.industry;
 
@@ -1005,7 +1082,7 @@ function renderIndustryBreakdown(reports) {
     .join("");
 }
 
-function renderActiveSummary(reports) {
+function renderActiveSummary(reports, jobs = []) {
   const parts = [];
 
   if (state.industry !== "All") parts.push(state.industry);
@@ -1013,16 +1090,16 @@ function renderActiveSummary(reports) {
   if (state.search) parts.push(`"${state.search}"`);
 
   const scope = parts.length ? parts.join(" + ") : "all anonymous reports";
-  elements.activeSummary.textContent = `${reports.length} matching ${scope}`;
+  elements.activeSummary.textContent = `${reports.length} salary reports + ${jobs.length} official job listings matching ${scope}`;
 }
 
-function renderFeed(reports) {
-  if (!reports.length) {
-    elements.feedList.innerHTML = '<div class="empty-state">No reports match the current filters.</div>';
+function renderFeed(reports, jobs = []) {
+  if (!reports.length && !jobs.length) {
+    elements.feedList.innerHTML = '<div class="empty-state">No reports or official job listings match the current filters.</div>';
     return;
   }
 
-  elements.feedList.innerHTML = reports
+  const reportCards = reports
     .map((report) => {
       const bonusAmount = Number(report.bonusAmount || 0);
       const hourlyLabel =
@@ -1075,6 +1152,42 @@ function renderFeed(reports) {
       `;
     })
     .join("");
+
+  const jobCards = jobs
+    .map((job) => {
+      const sourceLabel = job.sourceStatus === "official-sitemap" ? "official sitemap" : "official careers page";
+      return `
+        <article class="entry-card job-listing-card">
+          <div class="entry-top">
+            <div>
+              <p class="eyebrow">Official job listing</p>
+              <h3 class="role-title">${escapeHtml(job.title || job.role)}</h3>
+              <div class="pill-row">
+                <span class="pill company">${escapeHtml(job.company)}</span>
+                <span class="pill">${escapeHtml(job.industry)}</span>
+                <span class="pill">${escapeHtml(sourceLabel)}</span>
+              </div>
+            </div>
+            <div class="salary job-source">
+              Careers
+              <small>${escapeHtml(job.location || "Official listing")}</small>
+            </div>
+          </div>
+          <p class="entry-note">Pulled from ${escapeHtml(job.company)}'s official careers source.</p>
+          <div class="entry-footer">
+            <span class="entry-meta">Scraped ${formatDate(job.scrapedAt)}</span>
+            <div class="entry-actions">
+              <a class="entry-action insight-trigger" href="${escapeHtml(job.careersUrl)}" target="_blank" rel="noopener noreferrer">
+                Open listing
+              </a>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  elements.feedList.innerHTML = `${reportCards}${jobCards}`;
 }
 
 function filteredStories() {
@@ -1210,8 +1323,24 @@ function closeStoryModal() {
   document.body.classList.remove("has-drawer");
 }
 
+function openPayPanel() {
+  elements.paySubmitPanel.classList.add("is-open");
+  elements.paySubmitPanel.setAttribute("aria-hidden", "false");
+  document.body.classList.add("has-drawer");
+}
+
+function closePayPanel() {
+  elements.paySubmitPanel.classList.remove("is-open");
+  elements.paySubmitPanel.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("has-drawer");
+}
+
 function findReport(reportId) {
   return allReports().find((report) => report.id === reportId);
+}
+
+function sameText(left, right) {
+  return String(left || "").trim().toLowerCase() === String(right || "").trim().toLowerCase();
 }
 
 function cityOf(location) {
@@ -1237,41 +1366,30 @@ function percentDelta(value, baseline) {
 
 function peerReports(report) {
   const reports = allReports();
-  const exactPeers = reports.filter((candidate) => {
+  return reports.filter((candidate) => {
     return (
-      candidate.id !== report.id &&
-      candidate.industry === report.industry &&
-      (candidate.experience === report.experience || candidate.workStyle === report.workStyle)
+      sameText(candidate.company, report.company) &&
+      sameText(candidate.role, report.role)
     );
   });
-
-  if (exactPeers.length >= 4) {
-    return [report, ...exactPeers];
-  }
-
-  const industryPeers = reports.filter((candidate) => candidate.industry === report.industry);
-  if (industryPeers.length >= 3) {
-    return industryPeers;
-  }
-
-  return reports;
 }
 
 function marketComparison(report, peers) {
   const values = peers.map((candidate) => candidate.annualPay);
   const roleMedian = median(values);
-  const industryValues = allReports()
-    .filter((candidate) => candidate.industry === report.industry)
+  const companyValues = allReports()
+    .filter((candidate) => sameText(candidate.company, report.company))
     .map((candidate) => candidate.annualPay);
   const locationValues = allReports()
-    .filter((candidate) => cityOf(candidate.location) === cityOf(report.location))
+    .filter((candidate) => sameText(candidate.company, report.company) && cityOf(candidate.location) === cityOf(report.location))
     .map((candidate) => candidate.annualPay);
 
   return {
     peerCount: peers.length,
+    hasEnoughPeers: peers.length >= 2,
     percentile: percentileRank(values, report.annualPay),
     roleMedian,
-    industryMedian: median(industryValues),
+    industryMedian: median(companyValues.length ? companyValues : values),
     locationMedian: median(locationValues.length ? locationValues : values),
     middleLow: percentile(values, 25),
     middleHigh: percentile(values, 75),
@@ -1334,20 +1452,6 @@ function renderGenderRows(peers) {
     .join("");
 }
 
-function curvePoints(values, min, max) {
-  const range = Math.max(max - min, 1);
-  const checkpoints = [10, 25, 50, 75, 90];
-
-  return checkpoints
-    .map((checkpoint, index) => {
-      const value = percentile(values, checkpoint);
-      const x = 16 + index * 67;
-      const y = 104 - ((value - min) / range) * 76;
-      return `${x},${Math.max(18, Math.min(106, y))}`;
-    })
-    .join(" ");
-}
-
 function renderCurveToggle(groups, selected) {
   const available = ["All", ...groups.map(([gender]) => gender)];
 
@@ -1363,42 +1467,92 @@ function renderCurveToggle(groups, selected) {
   `;
 }
 
+function standardDeviation(values) {
+  if (values.length < 2) return 0;
+  const mean = average(values);
+  const variance = average(values.map((value) => (value - mean) ** 2));
+  return Math.sqrt(variance);
+}
+
+function distributionClass(label, selected) {
+  const base = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const active = selected === "All" || selected === label ? "is-active" : "is-muted";
+  return `${base} ${active}`;
+}
+
+function normalCurvePath(values, min, max, yScale) {
+  const meanValue = average(values);
+  const stdDev = standardDeviation(values) || Math.max((max - min) / 6, 1);
+  const range = Math.max(max - min, 1);
+  const points = [];
+
+  for (let index = 0; index <= 40; index += 1) {
+    const value = min + (range * index) / 40;
+    const density = Math.exp(-0.5 * ((value - meanValue) / stdDev) ** 2);
+    const x = 24 + ((value - min) / range) * 256;
+    const y = 132 - density * yScale;
+    points.push(`${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${Math.max(20, y).toFixed(1)}`);
+  }
+
+  return points.join(" ");
+}
+
 function renderPayCurve(peers, selected = "All") {
+  if (peers.length < 2) {
+    return '<div class="empty-state">Need at least 2 matching pay reports before showing a pay distribution.</div>';
+  }
+
   const allValues = peers.map((report) => report.annualPay);
-  const valuesByGender = groupReportsByGender(peers).slice(0, 3);
-  const min = Math.min(...allValues);
-  const max = Math.max(...allValues);
-  const allSeries = [
-    { label: "All reports", className: "all", values: allValues },
-    ...valuesByGender.map(([gender, reports]) => ({
-      label: gender,
-      className: gender.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      values: reports.map((report) => report.annualPay)
-    }))
-  ];
-  const series = selected === "All" ? allSeries : allSeries.filter((item) => item.label === selected);
-  const visibleSeries = series.length ? series : allSeries;
+  const valuesByGender = groupReportsByGender(peers).slice(0, 4);
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
+  const padding = Math.max((rawMax - rawMin) * 0.12, 5000);
+  const min = rawMin - padding;
+  const max = rawMax + padding;
+  const range = Math.max(max - min, 1);
+  const genderSeries = valuesByGender.map(([gender, reports]) => ({
+    label: gender,
+    reports,
+    values: reports.map((report) => report.annualPay),
+    mean: average(reports.map((report) => report.annualPay)),
+    median: median(reports.map((report) => report.annualPay))
+  }));
 
   return `
     <div class="curve-card">
-      <svg class="pay-curve" viewBox="0 0 304 124" role="img" aria-label="Percentile pay curve by gender group">
-        <line x1="16" y1="106" x2="284" y2="106"></line>
-        <line x1="16" y1="18" x2="16" y2="106"></line>
-        ${visibleSeries
-          .map((item) => {
-            return `<polyline class="curve-line ${item.className}" points="${curvePoints(item.values, min, max)}"></polyline>`;
+      <svg class="pay-curve pay-distribution" viewBox="0 0 304 160" role="img" aria-label="Normal pay distribution by gender">
+        <line x1="24" y1="132" x2="280" y2="132"></line>
+        <line x1="24" y1="20" x2="24" y2="132"></line>
+        ${genderSeries
+          .map((series) => {
+            const className = distributionClass(series.label, selected);
+            return `<path class="normal-curve ${className}" d="${normalCurvePath(series.values, min, max, 64)}"></path>`;
+          })
+          .join("")}
+        ${genderSeries
+          .map((series) => {
+            const className = distributionClass(series.label, selected);
+            const meanX = 24 + ((series.mean - min) / range) * 256;
+            const medianX = 24 + ((series.median - min) / range) * 256;
+            return `
+              <line class="distribution-marker mean ${className}" x1="${meanX.toFixed(1)}" y1="32" x2="${meanX.toFixed(1)}" y2="132"></line>
+              <line class="distribution-marker median ${className}" x1="${medianX.toFixed(1)}" y1="46" x2="${medianX.toFixed(1)}" y2="132"></line>
+            `;
           })
           .join("")}
       </svg>
       <div class="curve-legend">
-        ${visibleSeries.map((item) => `<span class="${item.className}">${escapeHtml(item.label)}</span>`).join("")}
+        ${genderSeries
+          .map((series) => {
+            const className = distributionClass(series.label, selected);
+            return `<span class="${className}">${escapeHtml(series.label)} · mean ${compactMoney(series.mean)} · median ${compactMoney(series.median)}</span>`;
+          })
+          .join("")}
       </div>
       <div class="curve-axis">
-        <span>10th</span>
-        <span>25th</span>
-        <span>50th</span>
-        <span>75th</span>
-        <span>90th</span>
+        <span>${compactMoney(min)}</span>
+        <span>${compactMoney(percentile(allValues, 50))}</span>
+        <span>${compactMoney(max)}</span>
       </div>
     </div>
   `;
@@ -1408,6 +1562,13 @@ function insightFlags(report, comparison, peers) {
   const flags = [];
   const note = report.note.toLowerCase();
   const adjustedGap = percentDelta(comparison.roleMedian, comparison.industryMedian);
+
+  if (!comparison.hasEnoughPeers) {
+    return [
+      "Not enough matching reports yet. This insight is based only on the submitted report, not a market graph.",
+      "Add more reports for the same company and role to unlock peer median, curve, and gender distribution."
+    ];
+  }
 
   if (note.includes("competing") || note.includes("offer") || note.includes("negotiated")) {
     flags.push("Negotiation signal: reports mentioning competing offers often sit above peer median.");
@@ -1447,6 +1608,10 @@ function openReportDrawer(reportId, curveFilter = "All") {
   const hourlyLabel = report.payType === "hourly" ? `${formatHourly(report.rawPay)}/hr annualized` : "annual total";
   const deltaRole = percentDelta(report.annualPay, comparison.roleMedian);
   const deltaLocation = percentDelta(report.annualPay, comparison.locationMedian);
+  const peerLabel = comparison.hasEnoughPeers ? `${comparison.peerCount} matching reports` : "only this matching report";
+  const distributionContent = comparison.hasEnoughPeers
+    ? renderGenderRows(peers)
+    : '<div class="empty-state">Gender distribution needs at least 2 matching reports for this company and role.</div>';
 
   elements.drawerContent.innerHTML = `
     <div class="drawer-heading">
@@ -1470,7 +1635,7 @@ function openReportDrawer(reportId, curveFilter = "All") {
       <div class="insight-tile">
         <span>Percentile</span>
         <strong>${comparison.percentile}th</strong>
-        <small>within ${comparison.peerCount} comparable reports</small>
+        <small>within ${peerLabel}</small>
       </div>
       <div class="insight-tile">
         <span>Peer median</span>
@@ -1491,8 +1656,8 @@ function openReportDrawer(reportId, curveFilter = "All") {
 
     <section class="drawer-section">
       <div class="mini-heading">
-        <h3>Pay equity curve</h3>
-        <span>percentiles by group</span>
+        <h3>Pay distribution</h3>
+        <span>normal curves by gender</span>
       </div>
       ${renderCurveToggle(genderGroups, curveFilter)}
       ${renderPayCurve(peers, curveFilter)}
@@ -1504,7 +1669,7 @@ function openReportDrawer(reportId, curveFilter = "All") {
         <span>${compactMoney(Math.min(...values))}-${compactMoney(Math.max(...values))}</span>
       </div>
       <div class="equity-list">
-        ${renderGenderRows(peers)}
+        ${distributionContent}
       </div>
     </section>
 
@@ -1543,6 +1708,7 @@ function escapeHtml(value) {
 
 function render() {
   const reports = filteredReports();
+  const jobs = filteredJobListings();
   const all = allReports();
 
   renderStories();
@@ -1550,8 +1716,8 @@ function render() {
   renderStats(reports);
   renderDistribution(reports);
   renderIndustryBreakdown(reports);
-  renderActiveSummary(reports);
-  renderFeed(reports);
+  renderActiveSummary(reports, jobs);
+  renderFeed(reports, jobs);
 }
 
 async function renderAuthState() {
@@ -1562,9 +1728,22 @@ async function renderAuthState() {
     const session = await response.json();
 
     if (session.user) {
+      state.user = session.user;
       elements.authLink.textContent = session.user.name.split(" ")[0] || "Account";
       elements.authLink.href = "/auth/logout";
       elements.authLink.title = "Log out";
+
+      // Already signed in: skip the auth step in onboarding.
+      if (elements.onboardingOverlay && !elements.onboardingOverlay.classList.contains("is-hidden")) {
+        if (state.profile) {
+          elements.onboardingOverlay.classList.add("is-hidden");
+        } else {
+          showProfileStep();
+        }
+      }
+    } else {
+      elements.authLink.textContent = "Log in";
+      elements.authLink.href = "/login.html";
     }
   } catch {
     elements.authLink.textContent = "Log in";
@@ -1617,25 +1796,28 @@ function bindEvents() {
     });
   });
 
-  elements.storyForm.addEventListener("submit", (event) => {
+  elements.storyForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const story = createStory(new FormData(elements.storyForm));
 
-    state.userStories.unshift(story);
-    saveUserStories();
-    if (story.company && !state.companies.includes(story.company)) state.companies.push(story.company);
-    if (story.role && !state.roles.includes(story.role)) state.roles.push(story.role);
-    state.companies = uniqueSorted(state.companies);
-    state.roles = uniqueSorted(state.roles);
-    elements.storyForm.reset();
-    populateStoryEntitySelects();
-    closeStoryModal();
-    state.storyFilter = "All";
-    elements.storyFilters.forEach((filter) => {
-      filter.classList.toggle("is-active", filter.dataset.storyFilter === "All");
-    });
-    render();
-    showToast("Story posted anonymously on this device.");
+    try {
+      const savedStory = await saveUserStory(story);
+      if (savedStory.company && !state.companies.includes(savedStory.company)) state.companies.push(savedStory.company);
+      if (savedStory.role && !state.roles.includes(savedStory.role)) state.roles.push(savedStory.role);
+      state.companies = uniqueSorted(state.companies);
+      state.roles = uniqueSorted(state.roles);
+      elements.storyForm.reset();
+      populateStoryEntitySelects();
+      closeStoryModal();
+      state.storyFilter = "All";
+      elements.storyFilters.forEach((filter) => {
+        filter.classList.toggle("is-active", filter.dataset.storyFilter === "All");
+      });
+      render();
+      showToast("Story posted to the shared server.");
+    } catch (error) {
+      showToast(error.message || "Could not save story.");
+    }
   });
 
   elements.storyFilters.forEach((filter) => {
@@ -1649,6 +1831,18 @@ function bindEvents() {
   });
 
   elements.openStoryModal.addEventListener("click", openStoryModal);
+  elements.openPayPanel.addEventListener("click", openPayPanel);
+  elements.closePayPanel.addEventListener("click", closePayPanel);
+
+  elements.payFilters.forEach((filter) => {
+    filter.addEventListener("click", () => {
+      state.payFilter = filter.dataset.payFilter;
+      elements.payFilters.forEach((button) => {
+        button.classList.toggle("is-active", button === filter);
+      });
+      render();
+    });
+  });
 
   elements.closeStoryModal.forEach((closeTarget) => {
     closeTarget.addEventListener("click", closeStoryModal);
@@ -1707,6 +1901,7 @@ function bindEvents() {
       elements.bonusAmount.value = "0";
       resetLinkedInVerification();
       updatePayTypeCopy();
+      closePayPanel();
       render();
       showToast("LinkedIn-verified anonymous report saved to the server.");
     } catch (error) {
@@ -1776,11 +1971,15 @@ function bindEvents() {
     state.search = "";
     state.industry = "All";
     state.experience = "All";
+    state.payFilter = "All";
     state.sort = "newest";
     elements.searchInput.value = "";
     elements.industryFilter.value = "All";
     elements.experienceFilter.value = "All";
     elements.sortSelect.value = "newest";
+    elements.payFilters.forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.payFilter === "All");
+    });
     render();
   });
 
@@ -1823,6 +2022,11 @@ function bindEvents() {
 
     if (event.key === "Escape" && elements.reportDrawer.classList.contains("is-open")) {
       closeReportDrawer();
+      return;
+    }
+
+    if (event.key === "Escape" && elements.paySubmitPanel.classList.contains("is-open")) {
+      closePayPanel();
     }
   });
 
@@ -1862,7 +2066,7 @@ if (state.profile) {
 }
 render();
 renderAuthState();
-Promise.all([loadServerOptions(), loadServerReports()]).then(() => {
+Promise.all([loadServerOptions(), loadServerReports(), loadServerStories()]).then(() => {
   populateSelects();
   render();
 });

@@ -1,0 +1,252 @@
+[
+  {
+    "industry": "Technology",
+    "company": "Google",
+    "url": "https://www.google.com/about/careers/applications/jobs/results"
+  },
+  {
+    "industry": "Technology",
+    "company": "Microsoft",
+    "url": "https://jobs.careers.microsoft.com/global/en/search"
+  },
+  {
+    "industry": "Technology",
+    "company": "Apple",
+    "url": "https://jobs.apple.com/us/search?location=united-states-USA"
+  },
+  {
+    "industry": "Technology",
+    "company": "Meta",
+    "url": "https://www.metacareers.com/jobs/"
+  },
+  {
+    "industry": "Technology",
+    "company": "Salesforce",
+    "url": "https://careers.salesforce.com/en/jobs/"
+  },
+  {
+    "industry": "Healthcare",
+    "company": "Kaiser Permanente",
+    "url": "https://www.kaiserpermanentejobs.org/search-jobs"
+  },
+  {
+    "industry": "Healthcare",
+    "company": "Mayo Clinic",
+    "url": "https://jobs.mayoclinic.org/search-jobs"
+  },
+  {
+    "industry": "Healthcare",
+    "company": "Cleveland Clinic",
+    "url": "https://www.clevelandclinicjobs.com/search-jobs"
+  },
+  {
+    "industry": "Healthcare",
+    "company": "HCA Healthcare",
+    "url": "https://careers.hcahealthcare.com/search/jobs"
+  },
+  {
+    "industry": "Healthcare",
+    "company": "UnitedHealth Group",
+    "url": "https://careers.unitedhealthgroup.com/job-search-results/"
+  },
+  {
+    "industry": "Finance",
+    "company": "JPMorgan Chase",
+    "url": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions"
+  },
+  {
+    "industry": "Finance",
+    "company": "Bank of America",
+    "url": "https://careers.bankofamerica.com/en-us/job-search"
+  },
+  {
+    "industry": "Finance",
+    "company": "Goldman Sachs",
+    "url": "https://higher.gs.com/roles"
+  },
+  {
+    "industry": "Finance",
+    "company": "Morgan Stanley",
+    "url": "https://morganstanley.eightfold.ai/careers"
+  },
+  {
+    "industry": "Finance",
+    "company": "Wells Fargo",
+    "url": "https://www.wellsfargojobs.com/en/jobs/"
+  },
+  {
+    "industry": "Education",
+    "company": "University of California",
+    "url": "https://employment.ucop.edu/"
+  },
+  {
+    "industry": "Education",
+    "company": "Arizona State University",
+    "url": "https://cfo.asu.edu/applicant"
+  },
+  {
+    "industry": "Education",
+    "company": "New York University",
+    "url": "https://uscareers-nyu.icims.com/jobs/search"
+  },
+  {
+    "industry": "Education",
+    "company": "Coursera",
+    "url": "https://www.coursera.org/careers/jobs"
+  },
+  {
+    "industry": "Education",
+    "company": "Khan Academy",
+    "url": "https://www.khanacademy.org/careers"
+  },
+  {
+    "industry": "Construction",
+    "company": "Bechtel",
+    "url": "https://jobs.bechtel.com/"
+  },
+  {
+    "industry": "Construction",
+    "company": "Turner Construction",
+    "url": "https://www.turnerconstruction.com/careers/jobs"
+  },
+  {
+    "industry": "Construction",
+    "company": "Fluor",
+    "url": "https://www.fluor.com/careers/job-search"
+  },
+  {
+    "industry": "Construction",
+    "company": "AECOM",
+    "url": "https://aecom.jobs/jobs/"
+  },
+  {
+    "industry": "Construction",
+    "company": "Skanska",
+    "url": "https://www.usa.skanska.com/who-we-are/careers/job-opportunities/"
+  },
+  {
+    "industry": "Retail",
+    "company": "Walmart",
+    "url": "https://careers.walmart.com/results"
+  },
+  {
+    "industry": "Retail",
+    "company": "Target",
+    "url": "https://jobs.target.com/search-jobs"
+  },
+  {
+    "industry": "Retail",
+    "company": "Costco",
+    "url": "https://www.costco.com/jobs.html"
+  },
+  {
+    "industry": "Retail",
+    "company": "Home Depot",
+    "url": "https://careers.homedepot.com/job-search-results/"
+  },
+  {
+    "industry": "Retail",
+    "company": "Best Buy",
+    "url": "https://jobs.bestbuy.com/bby"
+  },
+  {
+    "industry": "Manufacturing",
+    "company": "Toyota",
+    "url": "https://careers.toyota.com/us/en/search-results"
+  },
+  {
+    "industry": "Manufacturing",
+    "company": "General Motors",
+    "url": "https://search-careers.gm.com/en/jobs/"
+  },
+  {
+    "industry": "Manufacturing",
+    "company": "Boeing",
+    "url": "https://jobs.boeing.com/search-jobs"
+  },
+  {
+    "industry": "Manufacturing",
+    "company": "Caterpillar",
+    "url": "https://careers.caterpillar.com/en/jobs/"
+  },
+  {
+    "industry": "Manufacturing",
+    "company": "3M",
+    "url": "https://www.3m.com/3M/en_US/careers-us/search-jobs/"
+  },
+  {
+    "industry": "Hospitality",
+    "company": "Marriott",
+    "url": "https://careers.marriott.com/jobs/"
+  },
+  {
+    "industry": "Hospitality",
+    "company": "Hilton",
+    "url": "https://jobs.hilton.com/us/en/search-results"
+  },
+  {
+    "industry": "Hospitality",
+    "company": "Hyatt",
+    "url": "https://careers.hyatt.com/en-US/careers/"
+  },
+  {
+    "industry": "Hospitality",
+    "company": "Airbnb",
+    "url": "https://careers.airbnb.com/positions/"
+  },
+  {
+    "industry": "Hospitality",
+    "company": "Four Seasons",
+    "url": "https://jobs.fourseasons.com/"
+  },
+  {
+    "industry": "Logistics",
+    "company": "UPS",
+    "url": "https://www.jobs-ups.com/search-jobs"
+  },
+  {
+    "industry": "Logistics",
+    "company": "FedEx",
+    "url": "https://careers.fedex.com/jobs"
+  },
+  {
+    "industry": "Logistics",
+    "company": "DHL",
+    "url": "https://careers.dhl.com/global/en/search-results"
+  },
+  {
+    "industry": "Logistics",
+    "company": "Maersk",
+    "url": "https://www.maersk.com/careers/vacancies"
+  },
+  {
+    "industry": "Logistics",
+    "company": "XPO Logistics",
+    "url": "https://jobs.xpo.com/"
+  },
+  {
+    "industry": "Energy",
+    "company": "ExxonMobil",
+    "url": "https://jobs.exxonmobil.com/"
+  },
+  {
+    "industry": "Energy",
+    "company": "Chevron",
+    "url": "https://careers.chevron.com/job-search-results/"
+  },
+  {
+    "industry": "Energy",
+    "company": "Shell",
+    "url": "https://jobs.shell.com/search-jobs"
+  },
+  {
+    "industry": "Energy",
+    "company": "NextEra Energy",
+    "url": "https://jobs.nexteraenergy.com/"
+  },
+  {
+    "industry": "Energy",
+    "company": "ConocoPhillips",
+    "url": "https://careers.conocophillips.com/job-search-results/"
+  }
+]

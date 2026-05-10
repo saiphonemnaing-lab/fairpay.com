@@ -13,9 +13,8 @@
         <h1 id="authTitle">Sign in to personalize FairPay</h1>
         <p class="onboarding-copy">Choose how you want to enter. You can keep browsing as a guest and still get a curated feed.</p>
         <div class="auth-options">
-          <button class="auth-choice google" type="button" data-auth-choice="google">Sign up with Google</button>
-          <button class="auth-choice email" type="button" data-auth-choice="email">Sign in with Email</button>
-          <button class="auth-choice guest" type="button" data-auth-choice="guest">Continue as Guest</button>
+          <a class="auth-choice google" href="/auth/google">Continue with Google</a>
+
         </div>
       </section>
 
@@ -98,7 +97,8 @@
       </main>
 
       <main id="payPage" class="workspace page-view">
-        <section class="submit-panel tool-panel" aria-labelledby="submitTitle">
+        <section class="submit-panel tool-panel" id="paySubmitPanel" aria-labelledby="submitTitle" aria-hidden="true">
+          <button class="drawer-close pay-panel-close" type="button" id="closePayPanel" aria-label="Close pay form">Close</button>
           <div class="section-heading">
             <p class="eyebrow">Contribute</p>
             <h1 id="submitTitle">Share pay anonymously</h1>
@@ -242,7 +242,17 @@
               <p class="eyebrow">Community feed</p>
               <h2 id="feedTitle">Recent salary reports</h2>
             </div>
-            <button class="ghost-action" id="resetFilters" type="button">Reset</button>
+            <div class="feed-heading-actions">
+              <button class="share-story-action" id="openPayPanel" type="button">+ Share Pay</button>
+              <button class="ghost-action" id="resetFilters" type="button">Reset</button>
+            </div>
+          </div>
+
+          <div class="story-filters pay-quick-filters" aria-label="Pay feed filters">
+            <button class="story-filter is-active" type="button" data-pay-filter="All">All</button>
+            <button class="story-filter" type="button" data-pay-filter="Verified">Verified</button>
+            <button class="story-filter" type="button" data-pay-filter="Remote">Remote</button>
+            <button class="story-filter" type="button" data-pay-filter="High">High pay</button>
           </div>
 
           <div class="filters" aria-label="Salary report filters">
@@ -284,7 +294,7 @@
           <div id="feedList" class="feed-list"></div>
         </section>
 
-        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle">
+        <aside class="insights-panel tool-panel" aria-labelledby="insightsTitle" hidden>
           <div class="section-heading">
             <p class="eyebrow">Benchmarks</p>
             <h2 id="insightsTitle">Live pay signal</h2>
