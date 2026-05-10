@@ -572,8 +572,20 @@ function saveReactions() {
   localStorage.setItem(REACTION_KEY, JSON.stringify(state.reactions));
 }
 
+function usableReport(report) {
+  return Boolean(report && report.company && report.role && Number.isFinite(Number(report.annualPay)));
+}
+
+function usableJob(job) {
+  return Boolean(job && job.company && (job.title || job.role));
+}
+
+function usableStory(story) {
+  return Boolean(story && story.title && story.company && story.role && story.body);
+}
+
 function allReports() {
-  return [...state.userReports, ...sampleReports];
+  return [...state.userReports, ...sampleReports].filter(usableReport);
 }
 
 function uniqueSorted(values) {
@@ -581,13 +593,14 @@ function uniqueSorted(values) {
 }
 
 function mergeOptionsFromReports(reports) {
-  state.companies = uniqueSorted([...state.companies, ...sampleReports.map((report) => report.company), ...reports.map((report) => report.company)]);
-  state.roles = uniqueSorted([...state.roles, ...sampleReports.map((report) => report.role), ...reports.map((report) => report.role)]);
-  state.locations = uniqueSorted([...state.locations, ...sampleReports.map((report) => report.location), ...reports.map((report) => report.location)]);
+  const safeReports = (reports || []).filter(usableReport);
+  state.companies = uniqueSorted([...state.companies, ...sampleReports.map((report) => report.company), ...safeReports.map((report) => report.company)]);
+  state.roles = uniqueSorted([...state.roles, ...sampleReports.map((report) => report.role), ...safeReports.map((report) => report.role)]);
+  state.locations = uniqueSorted([...state.locations, ...sampleReports.map((report) => report.location), ...safeReports.map((report) => report.location)]);
 }
 
 function allStories() {
-  return [...state.userStories, ...sampleStories];
+  return [...state.userStories, ...sampleStories].filter(usableStory);
 }
 
 function normalizeText(value) {
@@ -732,7 +745,7 @@ function matchesJobSearch(job) {
 }
 
 function filteredJobListings() {
-  return state.jobListings.filter((job) => {
+  return state.jobListings.filter(usableJob).filter((job) => {
     return (
       matchesJobSearch(job) &&
       (state.industry === "All" || job.company === state.industry)
@@ -797,7 +810,7 @@ function companiesForIndustry(industry) {
     return state.companies;
   }
 
-  const companies = [...allReports(), ...state.jobListings, ...state.jobSources]
+  const companies = [...allReports(), ...state.jobListings.filter(usableJob), ...state.jobSources.filter((source) => source && source.company && source.industry)]
     .filter((item) => item.industry === industry)
     .map((item) => item.company);
 
@@ -809,7 +822,7 @@ function rolesForCompany(company) {
     return state.roles;
   }
 
-  const companyRoles = [...allReports(), ...state.jobListings]
+  const companyRoles = [...allReports(), ...state.jobListings.filter(usableJob)]
     .filter((report) => report.company === company)
     .map((report) => report.role);
 
@@ -817,7 +830,7 @@ function rolesForCompany(company) {
 }
 
 function inferIndustry(company, role) {
-  const reports = [...allReports(), ...state.jobListings];
+  const reports = [...allReports(), ...state.jobListings.filter(usableJob)];
   const exact = reports.find((report) => report.company === company && report.role === role);
   if (exact?.industry) return exact.industry;
 
@@ -1154,17 +1167,22 @@ function renderFeed(reports, jobs = []) {
     .join("");
 
   const jobCards = jobs
+    .filter(usableJob)
     .map((job) => {
       const sourceLabel = job.sourceStatus === "official-sitemap" ? "official sitemap" : "official careers page";
+      const company = job.company || "Company";
+      const title = job.title || job.role || "Open role";
+      const industry = job.industry || "General";
+      const careersUrl = job.careersUrl || job.careersSearchUrl || "#";
       return `
         <article class="entry-card job-listing-card">
           <div class="entry-top">
             <div>
               <p class="eyebrow">Official job listing</p>
-              <h3 class="role-title">${escapeHtml(job.title || job.role)}</h3>
+              <h3 class="role-title">${escapeHtml(title)}</h3>
               <div class="pill-row">
-                <span class="pill company">${escapeHtml(job.company)}</span>
-                <span class="pill">${escapeHtml(job.industry)}</span>
+                <span class="pill company">${escapeHtml(company)}</span>
+                <span class="pill">${escapeHtml(industry)}</span>
                 <span class="pill">${escapeHtml(sourceLabel)}</span>
               </div>
             </div>
@@ -1173,11 +1191,11 @@ function renderFeed(reports, jobs = []) {
               <small>${escapeHtml(job.location || "Official listing")}</small>
             </div>
           </div>
-          <p class="entry-note">Pulled from ${escapeHtml(job.company)}'s official careers source.</p>
+          <p class="entry-note">Pulled from ${escapeHtml(company)}'s official careers source.</p>
           <div class="entry-footer">
             <span class="entry-meta">Scraped ${formatDate(job.scrapedAt)}</span>
             <div class="entry-actions">
-              <a class="entry-action insight-trigger" href="${escapeHtml(job.careersUrl)}" target="_blank" rel="noopener noreferrer">
+              <a class="entry-action insight-trigger" href="${escapeHtml(careersUrl)}" target="_blank" rel="noopener noreferrer">
                 Open listing
               </a>
             </div>
