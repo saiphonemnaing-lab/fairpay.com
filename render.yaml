@@ -4,3 +4,20 @@ services:
     runtime: node
     buildCommand: "true"
     startCommand: node server.js
+    disk:
+      name: fairpay-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WAGESIGNAL_DATA_DIR
+        value: /var/data
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
